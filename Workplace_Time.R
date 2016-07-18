@@ -124,8 +124,8 @@ for (i in 1:length(MSA_list)){
   
       for (j in 1:length(s)){#loop to pull in data from state files
         
-        u <- unique(COUNTY_Points@data[COUNTY_Points@data$CBSAFP == MSA_list[i] & COUNTY_Points@data$STATEFP == t[i],"COUNTYFP"]) #List the counties within state
-        cnty_tmp <- paste0(t[i],u[j]) #Get county code
+        u <- unique(COUNTY_Points@data[COUNTY_Points@data$CBSAFP == MSA_list[i] & COUNTY_Points@data$STATEFP == t[j],"COUNTYFP"]) #List the counties within state
+        cnty_tmp <- paste0(t[j],u[j]) #Get county code
         
         if (substring(cnty_tmp,1,1) == "0"){#loop to check for the missing 0 issue you get on the state codes
           cnty_tmp <- substr(cnty_tmp,2,nchar(cnty_tmp))
