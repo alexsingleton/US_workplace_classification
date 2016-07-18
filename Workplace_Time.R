@@ -1,6 +1,7 @@
 #Set Working Directory
 library(R.utils)
 library(data.table)
+library(RCurl)
 setwd("~/US_workplace_classification")
 options(scipen=999)
 library(bit64)
@@ -36,7 +37,8 @@ output_log <- NA
 
 for (n in 1:length(state_list)) { #state loop
 
-  assign(paste0("all_blk_",state_list[n]),list())
+  #assign(paste0("all_blk_",state_list[n]),list())
+  assign(paste0("all_blk_",state_list[n]),data.table())
   
 for (i in 1:length(seq(2002, 2014, 1))) { #download loop
     dl_file <- paste0(state_list[n],"_wac_S000_JT00_",seq(2002, 2014, 1)[i],".csv.gz")
@@ -47,10 +49,11 @@ for (i in 1:length(seq(2002, 2014, 1))) { #download loop
         gunzip(dl_file)
         assign("temp",fread(paste0(state_list[n],"_wac_S000_JT00_",seq(2002, 2014, 1)[i],".csv"))) #read text
         temp[,w_geocode:=paste0(temp[,w_geocode],"_",seq(2002, 2014, 1)[i])]#append year
-        assign(paste0("workplace_",state_list[n],"_",seq(2002, 2014, 1)[i]),temp) #rename object
+        
+        assign(paste0("all_blk_",state_list[n]),rbind(get(paste0("all_blk_",state_list[n])),temp)) #Append data to the output data table
+        
         rm(temp)#remove temp object
-        assign(paste0("all_blk_",state_list[n],list()),list(get(paste0("all_blk_",state_list[n],list())),get(paste0("workplace_",state_list[n],"_",seq(2002, 2014, 1)[i])))) #assign year object to state list
-        rm(list=paste0("workplace_",state_list[n],"_",seq(2002, 2014, 1)[i])) #remove single year object
+        
         file.remove(paste0(state_list[n],"_wac_S000_JT00_",seq(2002, 2014, 1)[i],".csv"))#remove csv
         
     } else {
@@ -60,6 +63,91 @@ for (i in 1:length(seq(2002, 2014, 1))) { #download loop
 } #end state loop
 
 save.image("data.Rdata")
+
+
+
+#Todo;
+# Build typology sep. for workplaces by top ten MSA
+# Build RAC for MSA
+# Join by OD flow
+
+
+################################################
+#Create a lookup for MSA - County and State
+################################################
+
+#List of MSA codes (top 15 pop - https://en.wikipedia.org/wiki/List_of_Metropolitan_Statistical_Areas)
+CBSAFP <- c('35620','31080','16980','19100','26420','47900','37980','33100','12060','14460','41860','38060','40140','19820','42660')
+
+
+#Download CBSA Boundaries
+download.file("http://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_cbsa_500k.zip","cb_2015_us_cbsa_500k.zip")
+unzip("cb_2015_us_cbsa_500k.zip")
+CBSA <- readOGR(".", "cb_2015_us_cbsa_500k")
+CBSA <- CBSA[CBSA@data$CBSAFP %in% CBSAFP,] #Limit to top ten MSA
+
+# #Download State Boundaries
+# download.file("http://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_state_500k.zip","cb_2015_us_state_500k.zip")
+# unzip("cb_2015_us_state_500k.zip")
+# STATE <- readOGR(".", "cb_2015_us_state_500k")
+
+#Download County Boundaries
+download.file("http://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_county_500k.zip","cb_2015_us_county_500k.zip")
+unzip("cb_2015_us_county_500k.zip")
+COUNTY <- readOGR(".", "cb_2015_us_county_500k")
+
+#Create a county list within MSA
+COUNTY_Points <- SpatialPointsDataFrame(coords = coordinates(COUNTY), data = data.frame(COUNTY@data), proj4string = CRS(proj4string(COUNTY)))#Create Point version County
+o <- over(COUNTY_Points, CBSA) #Point in Polygon
+COUNTY_Points@data <- cbind(COUNTY_Points@data, o)# Add the attributes back county
+COUNTY_Points <- COUNTY_Points[!is.na(COUNTY_Points@data$CBSAFP), ]# Use the NA values to remove those points not within MSA definitions
+
+
+
+
+
+#Create MSA Tables
+FIPS_USPS <- fread("FIPS_USPS_CODE.csv") #Lookup from: https://www.census.gov/geo/reference/ansi_statetables.html
+MSA_list <- unique(COUNTY_Points@data$CBSAFP)#Create a list of MSA
+
+
+
+
+
+for (i in 1:length(MSA_list)){
+  
+  t <- unique(COUNTY_Points@data[COUNTY_Points@data$CBSAFP == MSA_list[i],"STATEFP"]) #List the state that the MSA are within
+  s <- tolower(FIPS_USPS[FIPS %in% t,USPS_CODE]) #Get the state list as USPS format codes
+  print(s)
+  
+  assign(paste0("MSA_",MSA_list[i]),data.table()) #Creates an empty MSA data table
+  
+      for (j in 1:length(s)){#loop to pull in data from state files
+        
+        u <- unique(COUNTY_Points@data[COUNTY_Points@data$CBSAFP == MSA_list[i] & COUNTY_Points@data$STATEFP == t[i],"COUNTYFP"]) #List the counties within state
+        cnty_tmp <- paste0(t[i],u[j]) #Get county code
+        
+        if (substring(cnty_tmp,1,1) == "0"){#loop to check for the missing 0 issue you get on the state codes
+          cnty_tmp <- substr(cnty_tmp,2,nchar(cnty_tmp))
+        }
+        
+      tmp <- get(paste0("all_blk_",s[j]))[substring(w_geocode,1,nchar(cnty_tmp)) == cnty_tmp,] #Get rows that match the county
+      
+      assign(paste0("MSA_",MSA_list[i]),rbind(get(paste0("MSA_",MSA_list[i])),tmp)) #Add data to MSA table
+  
+      }
+      
+  
+}
+
+
+
+
+
+
+
+
+
 
 
 
