@@ -105,14 +105,12 @@ COUNTY_Points <- COUNTY_Points[!is.na(COUNTY_Points@data$CBSAFP), ]# Use the NA 
 
 
 
-
+####################################################################################
 #Create MSA Tables
+####################################################################################
+
 FIPS_USPS <- fread("FIPS_USPS_CODE.csv") #Lookup from: https://www.census.gov/geo/reference/ansi_statetables.html
 MSA_list <- unique(COUNTY_Points@data$CBSAFP)#Create a list of MSA
-
-
-
-
 
 for (i in 1:length(MSA_list)){
   
@@ -134,14 +132,19 @@ for (i in 1:length(MSA_list)){
       tmp <- get(paste0("all_blk_",s[j]))[substring(w_geocode,1,nchar(cnty_tmp)) == cnty_tmp,] #Get rows that match the county
       
       assign(paste0("MSA_",MSA_list[i]),rbind(get(paste0("MSA_",MSA_list[i])),tmp)) #Add data to MSA table
-  
+
       }
-      
-  
 }
 
 
 
+
+#Split the zone code
+
+MSA_47900[, c("block_workplace", "year") := tstrsplit(w_geocode, "_", fixed=TRUE)]
+
+
+unique(substr(MSA_47900$block_workplace,1,4))
 
 
 
