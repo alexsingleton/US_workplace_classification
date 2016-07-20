@@ -12,14 +12,14 @@ library(rgeos)
 #San Francisco–Oakland–Hayward, CA Metropolitan Statistical Area (plus extras)
 #Alameda County (001), Contra Costa County, San Francisco, San Mateo County, Marin County,Napa (055), Solano (095), Santa Clara (085), Sonoma County (097)
 
-SFOH_FIPS <- c("001","013","075","081", "041","055","095","085","097")
+#SFOH_FIPS <- c("001","013","075","081", "041","055","095","085","097")
 
 
 #Read Blocks
-sp.2014_Block <- readOGR(".", "blocks")
-sp.2014_Block <- sp.2014_Block[sp.2014_Block@data$COUNTYF %in% SFOH_FIPS,]
-sp.2014_Block <- sp.2014_Block[sp.2014_Block@data$ALAND10 > 0,]
-block_list <- unique(sp.2014_Block@data$GEOID10)
+#sp.2014_Block <- readOGR(".", "blocks")
+#sp.2014_Block <- sp.2014_Block[sp.2014_Block@data$COUNTYF %in% SFOH_FIPS,]
+#sp.2014_Block <- sp.2014_Block[sp.2014_Block@data$ALAND10 > 0,]
+#block_list <- unique(sp.2014_Block@data$GEOID10)
 
 
 ##################
@@ -78,7 +78,9 @@ save.image("data.Rdata")
 
 #List of MSA codes (top 15 pop - https://en.wikipedia.org/wiki/List_of_Metropolitan_Statistical_Areas)
 CBSAFP <- c('35620','31080','16980','19100','26420','47900','37980','33100','12060','14460','41860','38060','40140','19820','42660')
-
+#Limit the list to those MSA where there are data available from 2004 onwards
+CBSAFP_remove <- c('47900','14460','38060') #DC,Boston
+CBSAFP <- setdiff(CBSAFP,CBSAFP_remove)
 
 #Download CBSA Boundaries
 download.file("http://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_cbsa_500k.zip","cb_2015_us_cbsa_500k.zip")
@@ -110,47 +112,59 @@ COUNTY_Points <- COUNTY_Points[!is.na(COUNTY_Points@data$CBSAFP), ]# Use the NA 
 ####################################################################################
 
 FIPS_USPS <- fread("FIPS_USPS_CODE.csv") #Lookup from: https://www.census.gov/geo/reference/ansi_statetables.html
-MSA_list <- unique(COUNTY_Points@data$CBSAFP)#Create a list of MSA
+MSA_list <- as.numeric(CBSAFP)#Create a list of MSA
 
 for (i in 1:length(MSA_list)){
   
   t <- unique(COUNTY_Points@data[COUNTY_Points@data$CBSAFP == MSA_list[i],"STATEFP"]) #List the state that the MSA are within
   s <- tolower(FIPS_USPS[FIPS %in% t,USPS_CODE]) #Get the state list as USPS format codes
   print(s)
-  
-  assign(paste0("MSA_",MSA_list[i]),data.table()) #Creates an empty MSA data table
-  
-      for (j in 1:length(s)){#loop to pull in data from state files
-        
-        u <- unique(COUNTY_Points@data[COUNTY_Points@data$CBSAFP == MSA_list[i] & COUNTY_Points@data$STATEFP == t[j],"COUNTYFP"]) #List the counties within state
-        cnty_tmp <- paste0(t[j],u[j]) #Get county code
-        
-        if (substring(cnty_tmp,1,1) == "0"){#loop to check for the missing 0 issue you get on the state codes
-          cnty_tmp <- substr(cnty_tmp,2,nchar(cnty_tmp))
-        }
-        
-      tmp <- get(paste0("all_blk_",s[j]))[substring(w_geocode,1,nchar(cnty_tmp)) == cnty_tmp,] #Get rows that match the county
-      
-      assign(paste0("MSA_",MSA_list[i]),rbind(get(paste0("MSA_",MSA_list[i])),tmp)) #Add data to MSA table
 
+  assign(paste0("MSA_",MSA_list[i]),data.table()) #Creates an empty MSA data table
+    
+    u <- COUNTY_Points@data[COUNTY_Points@data$CBSAFP == MSA_list[i] ,c("STATEFP","COUNTYFP")] #List the counties within state
+    u <- unique(paste0(u$STATEFP,u$COUNTYFP))#Create list of counties
+    
+    for (k in 1:length(u)) {  
+      if (substring(u[k],1,1) == "0"){#loop to check for the missing 0 issue you get on the state codes
+        u[k] <- substr(u[k],2,nchar(u[k]))
       }
+    }
+    
+    for (j in 1:length(s)){#loop to extract counties from appropriate state table
+      tmp <- get(paste0("all_blk_",s[j]))[substring(w_geocode,1,nchar(u)) %in% u,] #Get rows that match the county  
+      assign(paste0("MSA_",MSA_list[i]),rbind(get(paste0("MSA_",MSA_list[i])),tmp)) #Add data to MSA table
+    }
+
 }
 
+######################################################################
+#Create combined MSA input per year
+######################################################################
+
+for (i in 1:length(paste0("MSA_",CBSAFP))) { #loop through each MSA
+  
+  MSA <- paste0("MSA_",CBSAFP)[i]#get MSA code in the format of the data table
+  
+  get(MSA)[, c("block_workplace", "year") := tstrsplit(w_geocode, "_", fixed=TRUE)]#create a block and year column
+  
+}
+
+#update with list
+MSA_All <- do.call(rbind, list(MSA_35620, MSA_31080, MSA_16980, MSA_19100, MSA_26420, MSA_37980, MSA_33100, MSA_12060, MSA_41860, MSA_38060, MSA_40140, MSA_19820, MSA_42660))
 
 
 
-#Split the zone code
 
-MSA_47900[, c("block_workplace", "year") := tstrsplit(w_geocode, "_", fixed=TRUE)]
-
-
-unique(substr(MSA_47900$block_workplace,1,4))
+######################################################################
+# Create year files and calc rates
+######################################################################
 
 
 
 
 
-
+out_tab <- MSA_All[,colnames(MSA_All)[3:52],with=FALSE]/MSA_All[,C000] * 100 #convert to percent
 
 
 
