@@ -5,6 +5,7 @@ library(RCurl)
 setwd("~/US_workplace_classification")
 options(scipen=999)
 library(bit64)
+library(maptools)
 
 library(rgdal)
 library(rgeos)
@@ -13,6 +14,61 @@ library(rgeos)
 #Alameda County (001), Contra Costa County, San Francisco, San Mateo County, Marin County,Napa (055), Solano (095), Santa Clara (085), Sonoma County (097)
 
 #SFOH_FIPS <- c("001","013","075","081", "041","055","095","085","097")
+
+
+
+##################
+# Download blocks
+##################
+
+FIPS_USPS <- fread("FIPS_USPS_CODE.csv") #Lookup from: https://www.census.gov/geo/reference/ansi_statetables.html
+
+setwd("~/US_workplace_classification/blocks")
+
+#List of the states which MSA overlap
+state_list <- c("nj", "ny", "pa", "ca", "il", "in", "wi", "tx", "de", "md", "fl", "ga", "az", "mi", "wa")
+state_list <- FIPS_USPS[USPS_CODE %in% toupper(state_list),FIPS] #Get state numbers
+
+#Download the block shapefiles
+for (i in 1:length(state_list)){
+  
+  URL_file <- paste0("tl_2015_",state_list[i],"_tabblock10")
+  URL <- paste0("ftp://ftp2.census.gov/geo/tiger/TIGER2015/TABBLOCK/",URL_file,".zip")
+  download.file(URL,paste0(URL_file,".zip")) #Download
+  unzip (paste0(URL_file,".zip"), exdir = ".") #Unzip
+  
+}
+
+
+#List files
+files <- list.files(pattern=".shp$", recursive=TRUE,full.names=TRUE)
+uid<-1
+
+#Set the base polygon
+poly.data<- readOGR(files[1],gsub("^.*/(.*).shp$", "\\1", files[1]))
+n <- length(slot(poly.data, "polygons"))
+poly.data <- spChFIDs(poly.data, as.character(uid:(uid+n-1)))
+uid <- uid + n
+
+#Add the rest of the polygons
+for (i in 2:length(files)) {
+  temp.data <- readOGR(files[i], gsub("^.*/(.*).shp$", "\\1",files[i]))
+  n <- length(slot(temp.data, "polygons"))
+  temp.data <- spChFIDs(temp.data, as.character(uid:(uid+n-1)))
+  uid <- uid + n
+  poly.data <- spRbind(poly.data,temp.data)
+}
+
+#Write out shapefile
+#writeOGR(poly.data,".","blocks",driver = "ESRI Shapefile")
+
+#do.call(file.remove,list(list.files(".")))#Remove all files
+
+
+
+
+
+
 
 
 #Read Blocks
@@ -111,7 +167,6 @@ COUNTY_Points <- COUNTY_Points[!is.na(COUNTY_Points@data$CBSAFP), ]# Use the NA 
 #Create MSA Tables
 ####################################################################################
 
-FIPS_USPS <- fread("FIPS_USPS_CODE.csv") #Lookup from: https://www.census.gov/geo/reference/ansi_statetables.html
 MSA_list <- as.numeric(CBSAFP)#Create a list of MSA
 
 for (i in 1:length(MSA_list)){
@@ -145,8 +200,13 @@ for (i in 1:length(MSA_list)){
 for (i in 1:length(paste0("MSA_",CBSAFP))) { #loop through each MSA
   
   MSA <- paste0("MSA_",CBSAFP)[i]#get MSA code in the format of the data table
+  tmp <- get(MSA)
+  tmp[, c("block_workplace", "year") := tstrsplit(w_geocode, "_", fixed=TRUE)]#create a block and year column
   
-  get(MSA)[, c("block_workplace", "year") := tstrsplit(w_geocode, "_", fixed=TRUE)]#create a block and year column
+  tmp$block_workplace[nchar(tmp$block_workplace) < 15] <- paste0("0",tmp$block_workplace) #Corrects the missing 0 issue where needed
+  assign(MSA,tmp)
+  rm(tmp)
+
   
 }
 
@@ -154,17 +214,102 @@ for (i in 1:length(paste0("MSA_",CBSAFP))) { #loop through each MSA
 MSA_All <- do.call(rbind, list(MSA_35620, MSA_31080, MSA_16980, MSA_19100, MSA_26420, MSA_37980, MSA_33100, MSA_12060, MSA_41860, MSA_38060, MSA_40140, MSA_19820, MSA_42660))
 
 
-
-
 ######################################################################
 # Create year files and calc rates
 ######################################################################
 
-
-
-
-
 out_tab <- MSA_All[,colnames(MSA_All)[3:52],with=FALSE]/MSA_All[,C000] * 100 #convert to percent
+out_tab[,block_workplace:= MSA_All[,block_workplace]] #Add block code
+out_tab[,year:= MSA_All[,year]] #Add year ID
+
+
+yr_list <- unique(out_tab$year)
+
+for (i in 1:length(yr_list)){
+  
+  assign(paste0("MSA_",yr_list[i]),out_tab[year==yr_list[i]])
+}
+
+
+
+################################################################################
+# Code to check block matches and identify those blocks with no data for 2004-2014
+################################################################################
+
+length(unique(poly.data@data$GEOID10)) #number of unique block ID
+nrow(poly.data@data) #table rows
+
+all_block_IDs <- data.table(poly.data@data$GEOID10) 
+
+#Create a data table showing which blocks have data by year
+
+for (i in 1:length(2004:2014)){
+  
+  yr <- c(2004:2014)[i]#Get year
+  
+  tmp <- data.table(get(paste0("MSA_",yr))[,block_workplace])
+  tmp[,yr := 1]
+  setnames(tmp, old=c("V1","yr"), new=c("V1",paste0("Yr_",yr)))
+  
+  all_block_IDs <- merge(all_block_IDs,tmp,by = "V1", all.x=TRUE)
+  
+  tmp2 <- data.table(all_block_IDs[,V1])
+  tmp2[,In_All_Blocks := 1]
+  
+  tmp <- merge(data.table(tmp[,V1]),tmp2,by = "V1", all.x=TRUE)#Checks to ensure all blocks in a year are found in the all_block_IDs object
+  
+  assign(paste0("blocks_in_",yr),tmp)
+  rm(list=c("tmp","tmp2"))
+    
+}
+
+
+all_blocks_no_data <- all_block_IDs[rowSums(is.na(all_block_IDs))==11, V1]
+
+
+#write.csv(all_block_IDs,"missing_blocks")
+
+
+################################################################################
+# Remove blocks with no data for 2004 - 2014 / calc rates again
+################################################################################
+
+out_tab <- MSA_All[!block_workplace %in% all_blocks_no_data,]#remove blocks with no data
+
+out_tab <- out_tab[,colnames(out_tab)[3:52],with=FALSE]/out_tab[,C000] * 100 #convert to percent
+
+out_tab[,block_workplace:= MSA_All[!block_workplace %in% all_blocks_no_data,block_workplace]] #Add block code
+out_tab[!block_workplace %in% all_blocks_no_data,year:= MSA_All[,year]] #Add year ID
+
+yr_list <- unique(out_tab$year)
+
+for (i in 1:length(yr_list)){
+  
+  assign(paste0("MSA_",yr_list[i]),out_tab[year==yr_list[i]])
+}
+
+rm(list=c("MSA_2002","MSA_2003")) #Remove the 2002 and 2003 data; 2004 - 2014 only
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
