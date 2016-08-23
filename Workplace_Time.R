@@ -1,20 +1,13 @@
-#Set Working Directory
-library(R.utils)
-library(data.table)
-library(RCurl)
+#Set Working Directory and Options
 setwd("~/US_workplace_classification")
 options(scipen=999)
-library(bit64)
-library(maptools)
 
-library(rgdal)
-library(rgeos)
-
-#San Francisco–Oakland–Hayward, CA Metropolitan Statistical Area (plus extras)
-#Alameda County (001), Contra Costa County, San Francisco, San Mateo County, Marin County,Napa (055), Solano (095), Santa Clara (085), Sonoma County (097)
-
-#SFOH_FIPS <- c("001","013","075","081", "041","055","095","085","097")
-
+#Load Packages
+packages <- c("R.utils","data.table","RCurl","bit64","maptools","rgdal","rgeos")
+for (package in packages){
+if(paste(package) %in% rownames(installed.packages()) == FALSE) {install.packages(paste(package))}
+library(paste(package),character.only=TRUE)
+}
 
 
 ##################
@@ -59,29 +52,10 @@ for (i in 2:length(files)) {
   poly.data <- spRbind(poly.data,temp.data)
 }
 
-#Write out shapefile
-#writeOGR(poly.data,".","blocks",driver = "ESRI Shapefile")
-
-#do.call(file.remove,list(list.files(".")))#Remove all files
-
-
-
-
-
-
-
-
-#Read Blocks
-#sp.2014_Block <- readOGR(".", "blocks")
-#sp.2014_Block <- sp.2014_Block[sp.2014_Block@data$COUNTYF %in% SFOH_FIPS,]
-#sp.2014_Block <- sp.2014_Block[sp.2014_Block@data$ALAND10 > 0,]
-#block_list <- unique(sp.2014_Block@data$GEOID10)
-
-
 ##################
 # Download WAC Files
 ##################
-
+setwd("~/US_workplace_classification")
 
 #Create State list
 
@@ -117,16 +91,6 @@ for (i in 1:length(seq(2002, 2014, 1))) { #download loop
     }
 }#end download loop
 } #end state loop
-
-save.image("data.Rdata")
-
-
-
-#Todo;
-# Build typology sep. for workplaces by top ten MSA
-# Build RAC for MSA
-# Join by OD flow
-
 
 ################################################
 #Create a lookup for MSA - County and State
@@ -202,17 +166,18 @@ for (i in 1:length(paste0("MSA_",CBSAFP))) { #loop through each MSA
   MSA <- paste0("MSA_",CBSAFP)[i]#get MSA code in the format of the data table
   tmp <- get(MSA)
   tmp[, c("block_workplace", "year") := tstrsplit(w_geocode, "_", fixed=TRUE)]#create a block and year column
+  tmp[,MSA:= paste0(CBSAFP[i])]#Add MSA code
   
   tmp$block_workplace[nchar(tmp$block_workplace) < 15] <- paste0("0",tmp$block_workplace) #Corrects the missing 0 issue where needed
   assign(MSA,tmp)
   rm(tmp)
-
-  
 }
 
-#update with list
+#Create combined MSA object
 MSA_All <- do.call(rbind, list(MSA_35620, MSA_31080, MSA_16980, MSA_19100, MSA_26420, MSA_37980, MSA_33100, MSA_12060, MSA_41860, MSA_38060, MSA_40140, MSA_19820, MSA_42660))
 
+#remove individual MSA objects
+rm(list=c("MSA_35620","MSA_31080","MSA_16980","MSA_19100","MSA_26420","MSA_37980","MSA_33100","MSA_12060","MSA_41860","MSA_38060","MSA_40140","MSA_19820","MSA_42660"))
 
 ######################################################################
 # Create year files and calc rates
@@ -221,6 +186,7 @@ MSA_All <- do.call(rbind, list(MSA_35620, MSA_31080, MSA_16980, MSA_19100, MSA_2
 out_tab <- MSA_All[,colnames(MSA_All)[3:52],with=FALSE]/MSA_All[,C000] * 100 #convert to percent
 out_tab[,block_workplace:= MSA_All[,block_workplace]] #Add block code
 out_tab[,year:= MSA_All[,year]] #Add year ID
+out_tab[,MSA:= MSA_All[,MSA]] #Add year ID
 
 
 yr_list <- unique(out_tab$year)
@@ -229,8 +195,6 @@ for (i in 1:length(yr_list)){
   
   assign(paste0("MSA_",yr_list[i]),out_tab[year==yr_list[i]])
 }
-
-
 
 ################################################################################
 # Code to check block matches and identify those blocks with no data for 2004-2014
@@ -263,9 +227,7 @@ for (i in 1:length(2004:2014)){
     
 }
 
-
 all_blocks_no_data <- all_block_IDs[rowSums(is.na(all_block_IDs))==11, V1]
-
 
 #write.csv(all_block_IDs,"missing_blocks")
 
@@ -275,27 +237,48 @@ all_blocks_no_data <- all_block_IDs[rowSums(is.na(all_block_IDs))==11, V1]
 ################################################################################
 
 out_tab <- MSA_All[!block_workplace %in% all_blocks_no_data,]#remove blocks with no data
-
 out_tab <- out_tab[,colnames(out_tab)[3:52],with=FALSE]/out_tab[,C000] * 100 #convert to percent
-
 out_tab[,block_workplace:= MSA_All[!block_workplace %in% all_blocks_no_data,block_workplace]] #Add block code
-out_tab[!block_workplace %in% all_blocks_no_data,year:= MSA_All[,year]] #Add year ID
+out_tab[,TC:= MSA_All[!block_workplace %in% all_blocks_no_data,C000]] #Add total count
+out_tab[!block_workplace %in% all_blocks_no_data,year:= MSA_All[!block_workplace %in% all_blocks_no_data,year]] #Add year ID
 
 yr_list <- unique(out_tab$year)
+yr_list <- yr_list[!yr_list %in% c("2002","2003")]#2004 - 2014 only - 2002 & 2003 don't have full coverage
 
-for (i in 1:length(yr_list)){
+for (i in 1:length(yr_list)){ 
   
   assign(paste0("MSA_",yr_list[i]),out_tab[year==yr_list[i]])
+  #write.csv(assign(paste0("MSA_",yr_list[i]),out_tab[year==yr_list[i]]),paste0("MSA_",yr_list[i],".csv"),row.names = FALSE) Optional write csv
+  
 }
 
-rm(list=c("MSA_2002","MSA_2003")) #Remove the 2002 and 2003 data; 2004 - 2014 only
+save.image("data.Rdata")
 
 
+################################################################################
+# Clustering using H2O
+################################################################################
 
+#h2o.shutdown()
 
+# The following two commands remove any previously installed H2O packages for R.
+if ("package:h2o" %in% search()) { detach("package:h2o", unload=TRUE) }
+if ("h2o" %in% rownames(installed.packages())) { remove.packages("h2o") }
 
+# Next, we download, install and initialize the H2O package for R.
+install.packages("h2o", repos=(c("http://s3.amazonaws.com/h2o-release/h2o/master/1497/R", getOption("repos"))))
+library(h2o)
+h2o.init(max_mem_size = "20g",beta = TRUE) #Beta is needed to enable gap statistic
 
+#Convert dataframe to H20 dataframe
+MSA_2004.h2o <- as.h2o(MSA_2004, destination_frame="MSA_2004.h2o")
 
+i_cols <- c("CA01","CA02","CA03","CE01","CE02","CE03","CNS01", "CNS02", "CNS03", "CNS04", "CNS05", "CNS06", "CNS07", "CNS08", "CNS09","CNS10","CNS11","CNS12","CNS13","CNS14","CNS15","CNS16","CNS17","CNS18","CNS19","CNS20")
+
+K_10_results <- h2o.kmeans(training_frame = MSA_2004.h2o, k = 10, x = i_cols,max_iterations=1000,init="Random")
+K_10_results_out <- h2o.predict(K_10_results,MSA_2004.h2o) #Get the cluster ID
+
+h2o.downloadCSV(h2o.cbind(MSA_2004.h2o[,"block_workplace"],K_10_results_out), "K_10_lookup.csv")
 
 
 
