@@ -221,14 +221,14 @@ wss <- NA
 tmp <- NA
 
 for (k in 2:30){
-for (i in 1:10) {
+for (i in 1:5) {
   tmp[i] <- h2o.kmeans(training_frame = MSA_2004.h2o, k = k, x = i_cols,max_iterations=1000,init="Random")@model$model_summary["within_cluster_sum_of_squares"]
   }
-wss[k] <- min(unlist(tmp))
+wss <- rbind(wss,c(mean(unlist(tmp)),median(unlist(tmp)),min(mean(unlist(tmp))),max(unlist(tmp))))
 }
 
 
-plot(1:30, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+plot(1:30, wss[,1], type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
 
 
 
