@@ -44,10 +44,7 @@ for (i in 2:length(files)){
   print(i)
 }
 
-
-
-
-
+poly.data <- readOGR(".","blocks")
 
 
 ################################################
@@ -89,15 +86,51 @@ o <- over(COUNTY_Points, CBSA) #Point in Polygon
 COUNTY_Points@data <- cbind(COUNTY_Points@data, o)# Add the attributes back county
 COUNTY_Points <- COUNTY_Points[!is.na(COUNTY_Points@data$CBSAFP), ]# Use the NA values to remove those points not within MSA definitions
 
+####################################
+# Create Block MSA Shapefiles
+####################################
+
+setwd("~/US_workplace_classification/blocks")
+
+BLOCK_Points <- SpatialPointsDataFrame(coords = coordinates(poly.data), data = data.frame(poly.data@data), proj4string = CRS(proj4string(poly.data)))#Create Point version County
+
+o <- over(BLOCK_Points, CBSA) #Point in Polygon
+BLOCK_Points@data <- cbind(BLOCK_Points@data, o)# Add the attributes back to blocks
+BLOCK_Points <- BLOCK_Points[!is.na(BLOCK_Points@data$CBSAFP), ]# Use the NA values to remove those points not within MSA definitions
+
+MSA_list <- unique(BLOCK_Points@data$GEOID) #Create MSA list
+
+for (i in 1:length(MSA_list)){
+  
+  MSA_Blocks <- BLOCK_Points@data[BLOCK_Points@data$GEOID == MSA_list[i],"GEOID10"]
+  
+  tmp <- poly.data[poly.data@data$GEOID10 %in% MSA_Blocks,] #Get the polygons within MSA
+  tmp <- tmp[!tmp@data$ALAND10 == 0,]
+  tmp@data <- tmp@data[c("GEOID10","AWATER10")]
+  assign(paste0("BLOCKS_MSA_",paste(MSA_list[i])),tmp) #Save MSA blocks
+  writeOGR(tmp, ".", paste0("Block_MSA_",MSA_list[i]), driver="ESRI Shapefile")
+  rm(tmp)
+  
+}
+
+rm(poly.data) #Remove integrated file
+rm(BLOCK_Points) #Remove integrated points file
+
+#Create MSA Block list
+
+MSA_BLOCK_LIST <- NA
+
+for (i in 1:length(MSA_list)){
+  tmp <- get(paste0("BLOCKS_MSA_",paste(MSA_list[i])))
+  tmp <- as.character(tmp@data[,"GEOID10"])
+  MSA_BLOCK_LIST <-c(MSA_BLOCK_LIST,tmp)
+  rm(tmp)
+}
 
 
 
 
-
-
-
-
-
+save.image("data.Rdata")
 
 
 

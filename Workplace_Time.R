@@ -3,7 +3,7 @@ setwd("~/US_workplace_classification")
 options(scipen=999)
 
 #Load Packages
-packages <- c("R.utils","data.table","RCurl","bit64","maptools","rgdal","rgeos")
+packages <- c("R.utils","data.table","RCurl","bit64","maptools","rgdal","rgeos","cluster")
 for (package in packages){
 if(paste(package) %in% rownames(installed.packages()) == FALSE) {install.packages(paste(package))}
 library(paste(package),character.only=TRUE)
@@ -11,50 +11,9 @@ library(paste(package),character.only=TRUE)
 
 
 ##################
-# Download blocks
-##################
-
-FIPS_USPS <- fread("FIPS_USPS_CODE.csv") #Lookup from: https://www.census.gov/geo/reference/ansi_statetables.html
-
-setwd("~/US_workplace_classification/blocks")
-
-#List of the states which MSA overlap
-state_list <- c("nj", "ny", "pa", "ca", "il", "in", "wi", "tx", "de", "md", "fl", "ga", "az", "mi", "wa")
-state_list <- FIPS_USPS[USPS_CODE %in% toupper(state_list),FIPS] #Get state numbers
-
-#Download the block shapefiles
-for (i in 1:length(state_list)){
-  
-  URL_file <- paste0("tl_2015_",state_list[i],"_tabblock10")
-  URL <- paste0("ftp://ftp2.census.gov/geo/tiger/TIGER2015/TABBLOCK/",URL_file,".zip")
-  download.file(URL,paste0(URL_file,".zip")) #Download
-  unzip (paste0(URL_file,".zip"), exdir = ".") #Unzip
-  
-}
-
-
-#List files
-files <- list.files(pattern=".shp$", recursive=TRUE,full.names=TRUE)
-uid<-1
-
-#Set the base polygon
-poly.data<- readOGR(files[1],gsub("^.*/(.*).shp$", "\\1", files[1]))
-n <- length(slot(poly.data, "polygons"))
-poly.data <- spChFIDs(poly.data, as.character(uid:(uid+n-1)))
-uid <- uid + n
-
-#Add the rest of the polygons
-for (i in 2:length(files)) {
-  temp.data <- readOGR(files[i], gsub("^.*/(.*).shp$", "\\1",files[i]))
-  n <- length(slot(temp.data, "polygons"))
-  temp.data <- spChFIDs(temp.data, as.character(uid:(uid+n-1)))
-  uid <- uid + n
-  poly.data <- spRbind(poly.data,temp.data)
-}
-
-##################
 # Download WAC Files
 ##################
+
 setwd("~/US_workplace_classification")
 
 #Create State list
@@ -91,40 +50,6 @@ for (i in 1:length(seq(2002, 2014, 1))) { #download loop
     }
 }#end download loop
 } #end state loop
-
-################################################
-#Create a lookup for MSA - County and State
-################################################
-
-#List of MSA codes (top 15 pop - https://en.wikipedia.org/wiki/List_of_Metropolitan_Statistical_Areas)
-CBSAFP <- c('35620','31080','16980','19100','26420','47900','37980','33100','12060','14460','41860','38060','40140','19820','42660')
-#Limit the list to those MSA where there are data available from 2004 onwards
-CBSAFP_remove <- c('47900','14460','38060') #DC,Boston
-CBSAFP <- setdiff(CBSAFP,CBSAFP_remove)
-
-#Download CBSA Boundaries
-download.file("http://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_cbsa_500k.zip","cb_2015_us_cbsa_500k.zip")
-unzip("cb_2015_us_cbsa_500k.zip")
-CBSA <- readOGR(".", "cb_2015_us_cbsa_500k")
-CBSA <- CBSA[CBSA@data$CBSAFP %in% CBSAFP,] #Limit to top ten MSA
-
-# #Download State Boundaries
-# download.file("http://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_state_500k.zip","cb_2015_us_state_500k.zip")
-# unzip("cb_2015_us_state_500k.zip")
-# STATE <- readOGR(".", "cb_2015_us_state_500k")
-
-#Download County Boundaries
-download.file("http://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_county_500k.zip","cb_2015_us_county_500k.zip")
-unzip("cb_2015_us_county_500k.zip")
-COUNTY <- readOGR(".", "cb_2015_us_county_500k")
-
-#Create a county list within MSA
-COUNTY_Points <- SpatialPointsDataFrame(coords = coordinates(COUNTY), data = data.frame(COUNTY@data), proj4string = CRS(proj4string(COUNTY)))#Create Point version County
-o <- over(COUNTY_Points, CBSA) #Point in Polygon
-COUNTY_Points@data <- cbind(COUNTY_Points@data, o)# Add the attributes back county
-COUNTY_Points <- COUNTY_Points[!is.na(COUNTY_Points@data$CBSAFP), ]# Use the NA values to remove those points not within MSA definitions
-
-
 
 
 ####################################################################################
@@ -265,18 +190,96 @@ save.image("data.Rdata")
 if ("package:h2o" %in% search()) { detach("package:h2o", unload=TRUE) }
 if ("h2o" %in% rownames(installed.packages())) { remove.packages("h2o") }
 
+# Next, we download packages that H2O depends on.
+pkgs <- c("methods","statmod","stats","graphics","RCurl","jsonlite","tools","utils")
+for (pkg in pkgs) {
+  if (! (pkg %in% rownames(installed.packages()))) { install.packages(pkg) }
+}
+
 # Next, we download, install and initialize the H2O package for R.
-install.packages("h2o", repos=(c("http://s3.amazonaws.com/h2o-release/h2o/master/1497/R", getOption("repos"))))
+install.packages("h2o", type="source", repos=(c("http://h2o-release.s3.amazonaws.com/h2o/rel-turing/6/R")))
 library(h2o)
-h2o.init(max_mem_size = "20g",beta = TRUE) #Beta is needed to enable gap statistic
+h2o.init(max_mem_size = "30g",nthreads = -1)
+
 
 #Convert dataframe to H20 dataframe
 MSA_2004.h2o <- as.h2o(MSA_2004, destination_frame="MSA_2004.h2o")
 
 i_cols <- c("CA01","CA02","CA03","CE01","CE02","CE03","CNS01", "CNS02", "CNS03", "CNS04", "CNS05", "CNS06", "CNS07", "CNS08", "CNS09","CNS10","CNS11","CNS12","CNS13","CNS14","CNS15","CNS16","CNS17","CNS18","CNS19","CNS20")
 
+#gap <- clusGap(as.data.frame(subset(MSA_2004,select=i_cols)), kmeans, K.max=10, B=500)
+
+
 K_10_results <- h2o.kmeans(training_frame = MSA_2004.h2o, k = 10, x = i_cols,max_iterations=1000,init="Random")
 K_10_results_out <- h2o.predict(K_10_results,MSA_2004.h2o) #Get the cluster ID
+
+
+
+#Scree Plot
+
+wss <- NA
+tmp <- NA
+
+for (k in 2:30){
+for (i in 1:10) {
+  tmp[i] <- h2o.kmeans(training_frame = MSA_2004.h2o, k = k, x = i_cols,max_iterations=1000,init="Random")@model$model_summary["within_cluster_sum_of_squares"]
+  }
+wss[k] <- min(unlist(tmp))
+}
+
+
+plot(1:30, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+
+
+
+
+
+
+ minclust <- 2 #CHOOSE SOME NUMBER
+ maxclust <- 20  #CHOOSE SOME NUMBER
+fit <- data.frame(fit=Inf, k=NA)
+res <- list()
+ctr <- 1
+
+for (k in minclust:maxclust){
+  
+    temp_res <- 
+    fit[ctr, "fit"] <- temp_res@model$model_summary["within_cluster_sum_of_squares"]
+    fit[ctr, "k"] <- k
+    res[ctr] <- temp_res
+    ctr <- ctr +1
+    
+    }
+
+fit2 <- cbind(fit, cal)
+plot(fit2[,2], y=fit2[,3])
+abline(lm(fit2[,3]~fit2[,2]))
+plot(fit2[,2], y=fit2[,1])
+
+
+
+
+
+
+
+
+clusters <- list()
+fit <- NA
+for (i in 1:100000){
+  print(paste("starting run", i, sep=" "))
+  class.250 <- kmeans(x=aa, centers=250, iter.max=1000000, nstart=1)
+  fit[i] <- class.250$tot.withinss
+  if (fit[i] < min(fit[1:(i-1)])){
+    clusters <- class.250}
+}
+final <- clusters
+
+
+
+
+
+K_10_results@model$model_summary["within_cluster_sum_of_squares"]
+
 
 h2o.downloadCSV(h2o.cbind(MSA_2004.h2o[,"block_workplace"],K_10_results_out), "K_10_lookup.csv")
 
