@@ -216,69 +216,24 @@ K_10_results_out <- h2o.predict(K_10_results,MSA_2004.h2o) #Get the cluster ID
 
 
 #Scree Plot
-
-wss <- NA
+wss <- list()
 tmp <- NA
 
-for (k in 2:30){
-for (i in 1:5) {
+for (k in 2:25){
+for (i in 1:100) {
   tmp[i] <- h2o.kmeans(training_frame = MSA_2004.h2o, k = k, x = i_cols,max_iterations=1000,init="Random")@model$model_summary["within_cluster_sum_of_squares"]
   }
 wss <- rbind(wss,c(mean(unlist(tmp)),median(unlist(tmp)),min(mean(unlist(tmp))),max(unlist(tmp))))
 }
 
 
-plot(1:30, wss[,1], type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+plot(2:25, wss[,2], type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
 
 
 
 
 
 
- minclust <- 2 #CHOOSE SOME NUMBER
- maxclust <- 20  #CHOOSE SOME NUMBER
-fit <- data.frame(fit=Inf, k=NA)
-res <- list()
-ctr <- 1
-
-for (k in minclust:maxclust){
-  
-    temp_res <- 
-    fit[ctr, "fit"] <- temp_res@model$model_summary["within_cluster_sum_of_squares"]
-    fit[ctr, "k"] <- k
-    res[ctr] <- temp_res
-    ctr <- ctr +1
-    
-    }
-
-fit2 <- cbind(fit, cal)
-plot(fit2[,2], y=fit2[,3])
-abline(lm(fit2[,3]~fit2[,2]))
-plot(fit2[,2], y=fit2[,1])
-
-
-
-
-
-
-
-
-clusters <- list()
-fit <- NA
-for (i in 1:100000){
-  print(paste("starting run", i, sep=" "))
-  class.250 <- kmeans(x=aa, centers=250, iter.max=1000000, nstart=1)
-  fit[i] <- class.250$tot.withinss
-  if (fit[i] < min(fit[1:(i-1)])){
-    clusters <- class.250}
-}
-final <- clusters
-
-
-
-
-
-K_10_results@model$model_summary["within_cluster_sum_of_squares"]
 
 
 h2o.downloadCSV(h2o.cbind(MSA_2004.h2o[,"block_workplace"],K_10_results_out), "K_10_lookup.csv")
