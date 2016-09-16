@@ -177,13 +177,13 @@ for (i in 1:length(yr_list)){
   
 }
 
-save.image("data.Rdata")
-
 
 ################################################################################
 # Clustering using H2O
 ################################################################################
 
+
+# H20 Setup...
 #h2o.shutdown()
 
 # The following two commands remove any previously installed H2O packages for R.
@@ -204,51 +204,172 @@ h2o.init(max_mem_size = "30g",nthreads = -1)
 
 #Convert dataframe to H20 dataframe
 MSA_2004.h2o <- as.h2o(MSA_2004, destination_frame="MSA_2004.h2o")
+MSA_2005.h2o <- as.h2o(MSA_2005, destination_frame="MSA_2005.h2o")
+MSA_2006.h2o <- as.h2o(MSA_2006, destination_frame="MSA_2006.h2o")
+MSA_2007.h2o <- as.h2o(MSA_2007, destination_frame="MSA_2007.h2o")
+MSA_2008.h2o <- as.h2o(MSA_2008, destination_frame="MSA_2008.h2o")
+MSA_2009.h2o <- as.h2o(MSA_2009, destination_frame="MSA_2009.h2o")
+MSA_2010.h2o <- as.h2o(MSA_2010, destination_frame="MSA_2010.h2o")
+MSA_2011.h2o <- as.h2o(MSA_2011, destination_frame="MSA_2011.h2o")
+MSA_2012.h2o <- as.h2o(MSA_2012, destination_frame="MSA_2012.h2o")
+MSA_2013.h2o <- as.h2o(MSA_2013, destination_frame="MSA_2013.h2o")
+MSA_2014.h2o <- as.h2o(MSA_2014, destination_frame="MSA_2014.h2o")
 
+
+#Column list
 i_cols <- c("CA01","CA02","CA03","CE01","CE02","CE03","CNS01", "CNS02", "CNS03", "CNS04", "CNS05", "CNS06", "CNS07", "CNS08", "CNS09","CNS10","CNS11","CNS12","CNS13","CNS14","CNS15","CNS16","CNS17","CNS18","CNS19","CNS20")
 
-#gap <- clusGap(as.data.frame(subset(MSA_2004,select=i_cols)), kmeans, K.max=10, B=500)
+
+# #Scree Plot
+# wss <- list()
+# tmp <- NA
+# 
+# for (k in 2:25){
+# for (i in 1:100) {
+#   tmp[i] <- h2o.kmeans(training_frame = MSA_2004.h2o, k = k, x = i_cols,max_iterations=1000,standardize=FALSE,init="Random")@model$model_summary["within_cluster_sum_of_squares"]
+#   }
+# wss <- rbind(wss,c(mean(unlist(tmp)),median(unlist(tmp)),min(mean(unlist(tmp))),max(unlist(tmp))))
+# }
+# 
+# plot(2:25, wss[,1], type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
 
 
-K_10_results <- h2o.kmeans(training_frame = MSA_2004.h2o, k = 10, x = i_cols,max_iterations=1000,init="Random")
-K_10_results_out <- h2o.predict(K_10_results,MSA_2004.h2o) #Get the cluster ID
 
+######################
+#Scree Plot Function
+######################
 
-
-#Scree Plot
+cluster_plot <- function(min,max,df){
 wss <- list()
 tmp <- NA
-
-for (k in 2:25){
-for (i in 1:100) {
-  tmp[i] <- h2o.kmeans(training_frame = MSA_2004.h2o, k = k, x = i_cols,max_iterations=1000,init="Random")@model$model_summary["within_cluster_sum_of_squares"]
+for (k in min:max){
+    print(paste("Starting",k,"clusters"))
+  for (i in 1:100) {
+    tmp[i] <- h2o.kmeans(training_frame = df, k = k, x = i_cols,max_iterations=1000,standardize=FALSE,init="Random")@model$model_summary["within_cluster_sum_of_squares"]
   }
-wss <- rbind(wss,c(mean(unlist(tmp)),median(unlist(tmp)),min(mean(unlist(tmp))),max(unlist(tmp))))
+  wss <- rbind(wss,c(mean(unlist(tmp)),median(unlist(tmp)),min(mean(unlist(tmp))),max(unlist(tmp))))
+}
+return(wss)
 }
 
 
-plot(2:25, wss[,2], type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+wss_2014 <- cluster_plot(2,25,MSA_2014.h2o)
+plot(2:25, wss_2014[,1], type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+
+#####################
 
 
 
 
 
 
+# 
+# #Optimal cluster run
+# clusters <- list()
+# fit <- list()
+# for (i in 1:10000){
+#   print(paste("starting run", i, sep=" "))
+#   class.7 <- h2o.kmeans(training_frame = MSA_2004.h2o, k = 7, x = i_cols,max_iterations=1000,init="Random")
+#   fit[i] <- class.7@model$model_summary["within_cluster_sum_of_squares"]
+#   
+#   if (length(fit) == 1){clusters <- class.7 } #Initially sets the cluster object on first run
+#   
+#   if (fit[i] < min(unlist(fit)[1:(i-1)])){ #Keep the cluster object where wss is smaller
+#     clusters <- class.7
+#     }
+# }
+# 
+# K_7_results_out <- h2o.predict(clusters,MSA_2004.h2o) #Get the cluster ID
+# 
+# K_7_results_DF <- as.data.frame(h2o.cbind(MSA_2004.h2o[,"block_workplace"],K_7_results_out))#Create DF
+# h2o.downloadCSV(h2o.cbind(MSA_2004.h2o[,"block_workplace"],K_7_results_out), "K_7_lookup.csv")#Download CSV
+# 
 
 
-h2o.downloadCSV(h2o.cbind(MSA_2004.h2o[,"block_workplace"],K_10_results_out), "K_10_lookup.csv")
 
 
 
+######################
+#Optimal Cluster Function
+######################
 
 
 
+optimal_cluster <- function(k,df,year,runs){
+  
+clusters <- list()
+fit <- list()
+for (i in 1:runs){
+  print(paste("starting run", i, sep=" "))
+  tmp <- h2o.kmeans(training_frame = df, k = k, x = i_cols,max_iterations=1000,init="Random")
+  fit[i] <- tmp@model$model_summary["within_cluster_sum_of_squares"]
+  
+  if (length(fit) == 1){clusters <- tmp } #Initially sets the cluster object on first run
+  
+  if (fit[i] < min(unlist(fit)[1:(i-1)])){ #Keep the cluster object where wss is smaller
+    clusters <- tmp
+  }
+}
+
+cluster_results <- h2o.predict(clusters,df)
+
+#Objects to return
+return(list("cluster_object" = clusters,"fit"=fit,"lookup" = as.data.frame(h2o.cbind(df[,"block_workplace"],cluster_results))))
+
+}
 
 
 
+#Convert dataframe to H20 dataframe
+MSA_2004.h2o <- as.h2o(MSA_2004, destination_frame="MSA_2004.h2o")
+MSA_2005.h2o <- as.h2o(MSA_2005, destination_frame="MSA_2005.h2o")
+MSA_2006.h2o <- as.h2o(MSA_2006, destination_frame="MSA_2006.h2o")
+MSA_2007.h2o <- as.h2o(MSA_2007, destination_frame="MSA_2007.h2o")
+MSA_2008.h2o <- as.h2o(MSA_2008, destination_frame="MSA_2008.h2o")
+MSA_2009.h2o <- as.h2o(MSA_2009, destination_frame="MSA_2009.h2o")
+MSA_2010.h2o <- as.h2o(MSA_2010, destination_frame="MSA_2010.h2o")
+MSA_2011.h2o <- as.h2o(MSA_2011, destination_frame="MSA_2011.h2o")
+MSA_2012.h2o <- as.h2o(MSA_2012, destination_frame="MSA_2012.h2o")
+MSA_2013.h2o <- as.h2o(MSA_2013, destination_frame="MSA_2013.h2o")
+MSA_2014.h2o <- as.h2o(MSA_2014, destination_frame="MSA_2014.h2o")
 
 
 
+results_WP_04 <- optimal_cluster(7,MSA_2004.h2o,2004,10000)
+write.csv(results_WP_04$lookup,"~/Dropbox/results_WP_04.csv")
+
+results_WP_05 <- optimal_cluster(7,MSA_2005.h2o,2005,10000)
+write.csv(results_WP_05$lookup,"~/Dropbox/results_WP_05.csv")
+
+results_WP_06 <- optimal_cluster(7,MSA_2006.h2o,2006,10000)
+write.csv(results_WP_06$lookup,"~/Dropbox/results_WP_06.csv")
+
+results_WP_07 <- optimal_cluster(7,MSA_2007.h2o,2007,10000)
+write.csv(results_WP_07$lookup,"~/Dropbox/results_WP_07.csv")
+
+results_WP_08 <- optimal_cluster(7,MSA_2008.h2o,2008,10000)
+write.csv(results_WP_08$lookup,"~/Dropbox/results_WP_08.csv")
+
+results_WP_09 <- optimal_cluster(7,MSA_2009.h2o,2009,10000)
+write.csv(results_WP_09$lookup,"~/Dropbox/results_WP_09.csv")
+
+results_WP_10 <- optimal_cluster(7,MSA_2010.h2o,2010,10000)
+write.csv(results_WP_10$lookup,"~/Dropbox/results_WP_10.csv")
+
+results_WP_11 <- optimal_cluster(7,MSA_2011.h2o,2011,10000)
+write.csv(results_WP_11$lookup,"~/Dropbox/results_WP_11.csv")
+
+results_WP_12 <- optimal_cluster(7,MSA_2012.h2o,2012,10000)
+write.csv(results_WP_12$lookup,"~/Dropbox/results_WP_12.csv")
+
+results_WP_13 <- optimal_cluster(7,MSA_2013.h2o,2013,10000)
+write.csv(results_WP_13$lookup,"~/Dropbox/results_WP_13.csv")
+
+results_WP_14 <- optimal_cluster(7,MSA_2014.h2o,2014,10000)
+write.csv(results_WP_14$lookup,"~/Dropbox/results_WP_14.csv")
+
+
+save.image("data.Rdata")
 
 
 
