@@ -3,7 +3,7 @@ setwd("~/US_workplace_classification")
 options(scipen=999)
 
 #Load Packages
-packages <- c("R.utils","data.table","RCurl","bit64","maptools","rgdal","rgeos","cluster")
+packages <- c("R.utils","data.table","RCurl","bit64","maptools","rgdal","rgeos","cluster","plyr")
 for (package in packages){
 if(paste(package) %in% rownames(installed.packages()) == FALSE) {install.packages(paste(package))}
 library(paste(package),character.only=TRUE)
@@ -203,17 +203,22 @@ h2o.init(max_mem_size = "30g",nthreads = -1)
 
 
 #Convert dataframe to H20 dataframe
-MSA_2004.h2o <- as.h2o(MSA_2004, destination_frame="MSA_2004.h2o")
-MSA_2005.h2o <- as.h2o(MSA_2005, destination_frame="MSA_2005.h2o")
-MSA_2006.h2o <- as.h2o(MSA_2006, destination_frame="MSA_2006.h2o")
-MSA_2007.h2o <- as.h2o(MSA_2007, destination_frame="MSA_2007.h2o")
-MSA_2008.h2o <- as.h2o(MSA_2008, destination_frame="MSA_2008.h2o")
-MSA_2009.h2o <- as.h2o(MSA_2009, destination_frame="MSA_2009.h2o")
-MSA_2010.h2o <- as.h2o(MSA_2010, destination_frame="MSA_2010.h2o")
-MSA_2011.h2o <- as.h2o(MSA_2011, destination_frame="MSA_2011.h2o")
-MSA_2012.h2o <- as.h2o(MSA_2012, destination_frame="MSA_2012.h2o")
-MSA_2013.h2o <- as.h2o(MSA_2013, destination_frame="MSA_2013.h2o")
-MSA_2014.h2o <- as.h2o(MSA_2014, destination_frame="MSA_2014.h2o")
+
+limit <- 40
+
+
+
+MSA_2004.h2o <- as.h2o(MSA_2004[TC > limit], destination_frame="MSA_2004.h2o")
+MSA_2005.h2o <- as.h2o(MSA_2005[TC > limit], destination_frame="MSA_2005.h2o")
+MSA_2006.h2o <- as.h2o(MSA_2006[TC > limit], destination_frame="MSA_2006.h2o")
+MSA_2007.h2o <- as.h2o(MSA_2007[TC > limit], destination_frame="MSA_2007.h2o")
+MSA_2008.h2o <- as.h2o(MSA_2008[TC > limit], destination_frame="MSA_2008.h2o")
+MSA_2009.h2o <- as.h2o(MSA_2009[TC > limit], destination_frame="MSA_2009.h2o")
+MSA_2010.h2o <- as.h2o(MSA_2010[TC > limit], destination_frame="MSA_2010.h2o")
+MSA_2011.h2o <- as.h2o(MSA_2011[TC > limit], destination_frame="MSA_2011.h2o")
+MSA_2012.h2o <- as.h2o(MSA_2012[TC > limit], destination_frame="MSA_2012.h2o")
+MSA_2013.h2o <- as.h2o(MSA_2013[TC > limit], destination_frame="MSA_2013.h2o")
+MSA_2014.h2o <- as.h2o(MSA_2014[TC > limit], destination_frame="MSA_2014.h2o")
 
 
 #Column list
@@ -319,57 +324,108 @@ return(list("cluster_object" = clusters,"fit"=fit,"lookup" = as.data.frame(h2o.c
 }
 
 
-
-#Convert dataframe to H20 dataframe
-MSA_2004.h2o <- as.h2o(MSA_2004, destination_frame="MSA_2004.h2o")
-MSA_2005.h2o <- as.h2o(MSA_2005, destination_frame="MSA_2005.h2o")
-MSA_2006.h2o <- as.h2o(MSA_2006, destination_frame="MSA_2006.h2o")
-MSA_2007.h2o <- as.h2o(MSA_2007, destination_frame="MSA_2007.h2o")
-MSA_2008.h2o <- as.h2o(MSA_2008, destination_frame="MSA_2008.h2o")
-MSA_2009.h2o <- as.h2o(MSA_2009, destination_frame="MSA_2009.h2o")
-MSA_2010.h2o <- as.h2o(MSA_2010, destination_frame="MSA_2010.h2o")
-MSA_2011.h2o <- as.h2o(MSA_2011, destination_frame="MSA_2011.h2o")
-MSA_2012.h2o <- as.h2o(MSA_2012, destination_frame="MSA_2012.h2o")
-MSA_2013.h2o <- as.h2o(MSA_2013, destination_frame="MSA_2013.h2o")
-MSA_2014.h2o <- as.h2o(MSA_2014, destination_frame="MSA_2014.h2o")
-
-
-
-results_WP_04 <- optimal_cluster(7,MSA_2004.h2o,2004,10000)
+results_WP_04 <- optimal_cluster(6,MSA_2004.h2o,2004,10000)
 write.csv(results_WP_04$lookup,"~/Dropbox/results_WP_04.csv")
 
-results_WP_05 <- optimal_cluster(7,MSA_2005.h2o,2005,10000)
+results_WP_05 <- optimal_cluster(6,MSA_2005.h2o,2005,10000)
 write.csv(results_WP_05$lookup,"~/Dropbox/results_WP_05.csv")
 
-results_WP_06 <- optimal_cluster(7,MSA_2006.h2o,2006,10000)
+results_WP_06 <- optimal_cluster(6,MSA_2006.h2o,2006,10000)
 write.csv(results_WP_06$lookup,"~/Dropbox/results_WP_06.csv")
 
-results_WP_07 <- optimal_cluster(7,MSA_2007.h2o,2007,10000)
+results_WP_07 <- optimal_cluster(6,MSA_2007.h2o,2007,10000)
 write.csv(results_WP_07$lookup,"~/Dropbox/results_WP_07.csv")
 
-results_WP_08 <- optimal_cluster(7,MSA_2008.h2o,2008,10000)
+results_WP_08 <- optimal_cluster(6,MSA_2008.h2o,2008,10000)
 write.csv(results_WP_08$lookup,"~/Dropbox/results_WP_08.csv")
 
-results_WP_09 <- optimal_cluster(7,MSA_2009.h2o,2009,10000)
+results_WP_09 <- optimal_cluster(6,MSA_2009.h2o,2009,10000)
 write.csv(results_WP_09$lookup,"~/Dropbox/results_WP_09.csv")
 
-results_WP_10 <- optimal_cluster(7,MSA_2010.h2o,2010,10000)
+results_WP_10 <- optimal_cluster(6,MSA_2010.h2o,2010,10000)
 write.csv(results_WP_10$lookup,"~/Dropbox/results_WP_10.csv")
 
-results_WP_11 <- optimal_cluster(7,MSA_2011.h2o,2011,10000)
+results_WP_11 <- optimal_cluster(6,MSA_2011.h2o,2011,10000)
 write.csv(results_WP_11$lookup,"~/Dropbox/results_WP_11.csv")
 
-results_WP_12 <- optimal_cluster(7,MSA_2012.h2o,2012,10000)
+results_WP_12 <- optimal_cluster(6,MSA_2012.h2o,2012,10000)
 write.csv(results_WP_12$lookup,"~/Dropbox/results_WP_12.csv")
 
-results_WP_13 <- optimal_cluster(7,MSA_2013.h2o,2013,10000)
+results_WP_13 <- optimal_cluster(6,MSA_2013.h2o,2013,10000)
 write.csv(results_WP_13$lookup,"~/Dropbox/results_WP_13.csv")
 
-results_WP_14 <- optimal_cluster(7,MSA_2014.h2o,2014,10000)
+results_WP_14 <- optimal_cluster(6,MSA_2014.h2o,2014,10000)
 write.csv(results_WP_14$lookup,"~/Dropbox/results_WP_14.csv")
 
 
 save.image("data.Rdata")
+
+
+
+
+######################
+#Compare cluster solutions
+######################
+
+x <- results_WP_04$lookup
+
+
+compare_clusters <- function (x,y){
+
+  tmp <- merge(x,y, by="block_workplace",all.x=TRUE)
+  tmp2 <- as.data.frame.matrix(table(tmp[,2],tmp[,3])) #2004 as cols
+    tmp3 <- list()
+  for (n in 1:length(rownames(tmp2))){
+    tmp3[n] <- colnames(tmp2[which.max(tmp2[n,])])
+  }
+print(tmp2)
+return(unlist(tmp3))
+}
+
+
+#Setup lookup table...
+final_lookup <- as.data.frame(poly.data@data$GEOID10)
+colnames(final_lookup) <- c("block_workplace")
+final_lookup <- merge(final_lookup,results_WP_04$lookup,by="block_workplace",all.x=TRUE)
+colnames(final_lookup) <- c("block_workplace","results_WP_04")
+
+ys <- c("results_WP_05","results_WP_06","results_WP_07","results_WP_08","results_WP_09","results_WP_10","results_WP_11","results_WP_12","results_WP_13","results_WP_14")
+
+#Loop to create lookup
+for (i in 1:length(ys)){
+tmp <-  compare_clusters(x,get(ys[i])$lookup)#make comparison and return list
+tmp2 <- get(ys[i])$lookup#get comparison year
+tmp2$predict <- mapvalues(tmp2$predict, from = tmp, to = as.character(rep(0:5)))#use plyr to match new numbering
+colnames(tmp2) <- c("block_workplace",ys[i]) #change column names to reflect year
+final_lookup <- merge(final_lookup,tmp2,by="block_workplace",all.x=TRUE)
+}
+
+write.csv(final_lookup,"final_lookup.csv")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
