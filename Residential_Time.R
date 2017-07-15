@@ -11,10 +11,17 @@ library(paste(package),character.only=TRUE)
 
 
 ##################
-# Download WAC Files
+# Download RAC Files
 ##################
 
 setwd("~/US_workplace_classification")
+
+
+# Read shapefiles
+COUNTY_Points <- readRDS("COUNTY_Points.rds")
+
+# FIPS
+FIPS_USPS <- fread("FIPS_USPS_CODE.csv") #Lookup from: https://www.census.gov/geo/reference/ansi_statetables.html
 
 #Create State list
 
@@ -30,20 +37,20 @@ for (n in 1:length(state_list)) { #state loop
   assign(paste0("all_blk_",state_list[n]),data.table())
   
 for (i in 1:length(seq(2002, 2014, 1))) { #download loop
-    dl_file <- paste0(state_list[n],"_wac_S000_JT00_",seq(2002, 2014, 1)[i],".csv.gz")
+    dl_file <- paste0(state_list[n],"_rac_S000_JT00_",seq(2002, 2014, 1)[i],".csv.gz")
     
-    if (url.exists((paste0("http://lehd.ces.census.gov/data/lodes/LODES7/",state_list[n],"/wac/",dl_file)))) { #Checks if the remote file exists
+    if (url.exists((paste0("http://lehd.ces.census.gov/data/lodes/LODES7/",state_list[n],"/rac/",dl_file)))) { #Checks if the remote file exists
     
-        download.file(paste0("http://lehd.ces.census.gov/data/lodes/LODES7/",state_list[n],"/wac/",dl_file),dl_file) #All Jobs
+        download.file(paste0("http://lehd.ces.census.gov/data/lodes/LODES7/",state_list[n],"/rac/",dl_file),dl_file) #All Jobs
         gunzip(dl_file)
-        assign("temp",fread(paste0(state_list[n],"_wac_S000_JT00_",seq(2002, 2014, 1)[i],".csv"))) #read text
-        temp[,w_geocode:=paste0(temp[,w_geocode],"_",seq(2002, 2014, 1)[i])]#append year
+        assign("temp",fread(paste0(state_list[n],"_rac_S000_JT00_",seq(2002, 2014, 1)[i],".csv"))) #read text
+        temp[,h_geocode:=paste0(temp[,h_geocode],"_",seq(2002, 2014, 1)[i])]#append year
         
         assign(paste0("all_blk_",state_list[n]),rbind(get(paste0("all_blk_",state_list[n])),temp)) #Append data to the output data table
         
         rm(temp)#remove temp object
         
-        file.remove(paste0(state_list[n],"_wac_S000_JT00_",seq(2002, 2014, 1)[i],".csv"))#remove csv
+        file.remove(paste0(state_list[n],"_rac_S000_JT00_",seq(2002, 2014, 1)[i],".csv"))#remove csv
         
     } else {
         output_log <- c(output_log,paste0(state_list[n],"_",seq(2002, 2014, 1)[i]))
@@ -79,7 +86,7 @@ for (i in 1:length(MSA_list)){
     }
     
     for (j in 1:length(s)){#loop to extract counties from appropriate state table
-      tmp <- get(paste0("all_blk_",s[j]))[substring(w_geocode,1,nchar(u)) %in% u,] #Get rows that match the county  
+      tmp <- get(paste0("all_blk_",s[j]))[substring(h_geocode,1,nchar(u)) %in% u,] #Get rows that match the county  
       assign(paste0("MSA_",MSA_list[i]),rbind(get(paste0("MSA_",MSA_list[i])),tmp)) #Add data to MSA table
     }
 
@@ -93,10 +100,10 @@ for (i in 1:length(paste0("MSA_",CBSAFP))) { #loop through each MSA
   
   MSA <- paste0("MSA_",CBSAFP)[i]#get MSA code in the format of the data table
   tmp <- get(MSA)
-  tmp[, c("block_workplace", "year") := tstrsplit(w_geocode, "_", fixed=TRUE)]#create a block and year column
+  tmp[, c("res_workplace", "year") := tstrsplit(h_geocode, "_", fixed=TRUE)]#create a block and year column
   tmp[,MSA:= paste0(CBSAFP[i])]#Add MSA code
   
-  tmp$block_workplace[nchar(tmp$block_workplace) < 15] <- paste0("0",tmp$block_workplace) #Corrects the missing 0 issue where needed
+  tmp$res_workplace[nchar(tmp$res_workplace) < 15] <- paste0("0",tmp$res_workplace) #Corrects the missing 0 issue where needed
   assign(MSA,tmp)
   rm(tmp)
 }
@@ -111,10 +118,10 @@ rm(list=c("MSA_35620","MSA_31080","MSA_16980","MSA_19100","MSA_26420","MSA_37980
 # Create year files and calc rates
 ######################################################################
 
-out_tab <- MSA_All[,colnames(MSA_All)[3:52],with=FALSE]/MSA_All[,C000] * 100 #convert to percent
-out_tab[,block_workplace:= MSA_All[,block_workplace]] #Add block code
+out_tab <- MSA_All[,colnames(MSA_All)[2:42],with=FALSE]/MSA_All[,C000] * 100 #convert to percent
+out_tab[,res_workplace:= MSA_All[,res_workplace]] #Add block code
 out_tab[,year:= MSA_All[,year]] #Add year ID
-out_tab[,MSA:= MSA_All[,MSA]] #Add year ID
+out_tab[,MSA:= MSA_All[,MSA]] #Add MSA
 
 
 yr_list <- unique(out_tab$year)
@@ -128,8 +135,18 @@ for (i in 1:length(yr_list)){
 # Code to check block matches and identify those blocks with no data for 2004-2014
 ################################################################################
 
-length(unique(poly.data@data$GEOID10)) #number of unique block ID
-nrow(poly.data@data) #table rows
+# Read blocks for MSA
+all_block_IDs <- NA
+
+for (i in 1:length(MSA_list)){
+  assign(paste0("Block_MSA_",MSA_list[i]),readOGR("./blocks/", paste0("Block_MSA_",MSA_list[i])))  
+  length(unique(get(paste0("Block_MSA_",MSA_list[i]))$GEOID10))
+  nrow(get(paste0("Block_MSA_",MSA_list[i]))) #table rows
+  
+  all_block_IDs <- c(all_block_IDs,as.character(get(paste0("Block_MSA_",MSA_list[i]))$GEOID10))
+}
+
+
 
 all_block_IDs <- data.table(poly.data@data$GEOID10) 
 
@@ -139,7 +156,7 @@ for (i in 1:length(2004:2014)){
   
   yr <- c(2004:2014)[i]#Get year
   
-  tmp <- data.table(get(paste0("MSA_",yr))[,block_workplace])
+  tmp <- data.table(get(paste0("MSA_",yr))[,res_workplace])
   tmp[,yr := 1]
   setnames(tmp, old=c("V1","yr"), new=c("V1",paste0("Yr_",yr)))
   
@@ -164,11 +181,11 @@ all_blocks_no_data <- all_block_IDs[rowSums(is.na(all_block_IDs))==11, V1]
 # Remove blocks with no data for 2004 - 2014 / calc rates again
 ################################################################################
 
-out_tab <- MSA_All[!block_workplace %in% all_blocks_no_data,]#remove blocks with no data
+out_tab <- MSA_All[!res_workplace %in% all_blocks_no_data,]#remove blocks with no data
 out_tab <- out_tab[,colnames(out_tab)[3:52],with=FALSE]/out_tab[,C000] * 100 #convert to percent
-out_tab[,block_workplace:= MSA_All[!block_workplace %in% all_blocks_no_data,block_workplace]] #Add block code
-out_tab[,TC:= MSA_All[!block_workplace %in% all_blocks_no_data,C000]] #Add total count
-out_tab[!block_workplace %in% all_blocks_no_data,year:= MSA_All[!block_workplace %in% all_blocks_no_data,year]] #Add year ID
+out_tab[,res_workplace:= MSA_All[!res_workplace %in% all_blocks_no_data,res_workplace]] #Add block code
+out_tab[,TC:= MSA_All[!res_workplace %in% all_blocks_no_data,C000]] #Add total count
+out_tab[!res_workplace %in% all_blocks_no_data,year:= MSA_All[!res_workplace %in% all_blocks_no_data,year]] #Add year ID
 
 yr_list <- unique(out_tab$year)
 yr_list <- yr_list[!yr_list %in% c("2002","2003")]#2004 - 2014 only - 2002 & 2003 don't have full coverage
@@ -289,8 +306,8 @@ plot(2:25, wss_2014[,1], type="b", xlab="Number of Clusters", ylab="Within group
 # 
 # K_7_results_out <- h2o.predict(clusters,MSA_2004.h2o) #Get the cluster ID
 # 
-# K_7_results_DF <- as.data.frame(h2o.cbind(MSA_2004.h2o[,"block_workplace"],K_7_results_out))#Create DF
-# h2o.downloadCSV(h2o.cbind(MSA_2004.h2o[,"block_workplace"],K_7_results_out), "K_7_lookup.csv")#Download CSV
+# K_7_results_DF <- as.data.frame(h2o.cbind(MSA_2004.h2o[,"res_workplace"],K_7_results_out))#Create DF
+# h2o.downloadCSV(h2o.cbind(MSA_2004.h2o[,"res_workplace"],K_7_results_out), "K_7_lookup.csv")#Download CSV
 # 
 
 
@@ -322,7 +339,7 @@ for (i in 1:runs){
 cluster_results <- h2o.predict(clusters,df)
 
 #Objects to return
-return(list("cluster_object" = clusters,"fit"=fit,"lookup" = as.data.frame(h2o.cbind(df[,"block_workplace"],cluster_results))))
+return(list("cluster_object" = clusters,"fit"=fit,"lookup" = as.data.frame(h2o.cbind(df[,"res_workplace"],cluster_results))))
 
 }
 
@@ -375,7 +392,7 @@ x <- results_WP_04$lookup
 
 compare_clusters <- function (x,y){
 
-  tmp <- merge(x,y, by="block_workplace",all.x=TRUE)
+  tmp <- merge(x,y, by="res_workplace",all.x=TRUE)
   tmp2 <- as.data.frame.matrix(table(tmp[,2],tmp[,3])) #2004 as cols
     tmp3 <- list()
   for (n in 1:length(rownames(tmp2))){
@@ -388,9 +405,9 @@ return(unlist(tmp3))
 
 #Setup lookup table...
 final_lookup <- as.data.frame(poly.data@data$GEOID10)
-colnames(final_lookup) <- c("block_workplace")
-final_lookup <- merge(final_lookup,results_WP_04$lookup,by="block_workplace",all.x=TRUE)
-colnames(final_lookup) <- c("block_workplace","results_WP_04")
+colnames(final_lookup) <- c("res_workplace")
+final_lookup <- merge(final_lookup,results_WP_04$lookup,by="res_workplace",all.x=TRUE)
+colnames(final_lookup) <- c("res_workplace","results_WP_04")
 
 ys <- c("results_WP_05","results_WP_06","results_WP_07","results_WP_08","results_WP_09","results_WP_10","results_WP_11","results_WP_12","results_WP_13","results_WP_14")
 
@@ -399,8 +416,8 @@ for (i in 1:length(ys)){
 tmp <-  compare_clusters(x,get(ys[i])$lookup)#make comparison and return list
 tmp2 <- get(ys[i])$lookup#get comparison year
 tmp2$predict <- mapvalues(tmp2$predict, from = tmp, to = as.character(rep(0:5)))#use plyr to match new numbering
-colnames(tmp2) <- c("block_workplace",ys[i]) #change column names to reflect year
-final_lookup <- merge(final_lookup,tmp2,by="block_workplace",all.x=TRUE)
+colnames(tmp2) <- c("res_workplace",ys[i]) #change column names to reflect year
+final_lookup <- merge(final_lookup,tmp2,by="res_workplace",all.x=TRUE)
 }
 
 write.csv(final_lookup,"final_lookup.csv")
@@ -717,7 +734,7 @@ sp.2014_Block_Cluster@data <- sp.2014_Block_Cluster@data[,!colnames(sp.2014_Bloc
 #Append cluster
 sp.2014_Block_Cluster@data = data.frame(sp.2014_Block_Cluster@data, lookup_final[match(sp.2014_Block_Cluster@data[, "Block"], lookup_final[, "Block"]), ])
 
-writeOGR(sp.2014_Block_Cluster,".","block_workplace_jobs_class",driver = "ESRI Shapefile")
+writeOGR(sp.2014_Block_Cluster,".","res_workplace_jobs_class",driver = "ESRI Shapefile")
 
 
 ###################################################################################################

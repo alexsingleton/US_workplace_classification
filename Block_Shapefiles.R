@@ -13,9 +13,11 @@ for (package in packages){
 ##################
 # Download blocks
 ##################
-setwd("~/US_workplace_classification/blocks")
+
 
 FIPS_USPS <- fread("FIPS_USPS_CODE.csv") #Lookup from: https://www.census.gov/geo/reference/ansi_statetables.html
+
+setwd("~/US_workplace_classification/blocks")
 
 #List of the states which MSA overlap
 state_list <- c("nj", "ny", "pa", "ca", "il", "in", "wi", "tx", "de", "md", "fl", "ga", "az", "mi", "wa")
@@ -86,6 +88,10 @@ o <- over(COUNTY_Points, CBSA) #Point in Polygon
 COUNTY_Points@data <- cbind(COUNTY_Points@data, o)# Add the attributes back county
 COUNTY_Points <- COUNTY_Points[!is.na(COUNTY_Points@data$CBSAFP), ]# Use the NA values to remove those points not within MSA definitions
 
+setwd("~/US_workplace_classification")
+saveRDS(COUNTY_Points, file="COUNTY_Points.rds")
+saveRDS(CBSA, file="CBSA.rds")
+
 ####################################
 # Create Block MSA Shapefiles
 ####################################
@@ -105,7 +111,7 @@ for (i in 1:length(MSA_list)){
   MSA_Blocks <- BLOCK_Points@data[BLOCK_Points@data$GEOID == MSA_list[i],"GEOID10"]
   
   tmp <- poly.data[poly.data@data$GEOID10 %in% MSA_Blocks,] #Get the polygons within MSA
-  tmp <- tmp[!tmp@data$ALAND10 == 0,]
+  tmp <- tmp[tmp@data$AWATER10 != 0,]
   tmp@data <- tmp@data[c("GEOID10","AWATER10")]
   assign(paste0("BLOCKS_MSA_",paste(MSA_list[i])),tmp) #Save MSA blocks
   writeOGR(tmp, ".", paste0("Block_MSA_",MSA_list[i]), driver="ESRI Shapefile")
