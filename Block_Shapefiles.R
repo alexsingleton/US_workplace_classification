@@ -46,6 +46,21 @@ for (i in 2:length(files)){
   print(i)
 }
 
+#Remove unwanted columns
+
+system("ogrinfo blocks.shp -sql 'ALTER TABLE blocks DROP COLUMN STATEFP10'")
+system("ogrinfo blocks.shp -sql 'ALTER TABLE blocks DROP COLUMN COUNTYFP10'")
+system("ogrinfo blocks.shp -sql 'ALTER TABLE blocks DROP COLUMN TRACTCE10'")
+system("ogrinfo blocks.shp -sql 'ALTER TABLE blocks DROP COLUMN BLOCKCE10'")
+system("ogrinfo blocks.shp -sql 'ALTER TABLE blocks DROP COLUMN NAME10'")
+system("ogrinfo blocks.shp -sql 'ALTER TABLE blocks DROP COLUMN MTFCC10'")
+system("ogrinfo blocks.shp -sql 'ALTER TABLE blocks DROP COLUMN UR10'")
+system("ogrinfo blocks.shp -sql 'ALTER TABLE blocks DROP COLUMN UACE10'")
+system("ogrinfo blocks.shp -sql 'ALTER TABLE blocks DROP COLUMN UATYPE'")
+system("ogrinfo blocks.shp -sql 'ALTER TABLE blocks DROP COLUMN FUNCSTAT10'")
+system("ogrinfo blocks.shp -sql 'ALTER TABLE blocks DROP COLUMN INTPTLAT10'")
+
+
 poly.data <- readOGR(".","blocks")
 
 
@@ -88,9 +103,7 @@ o <- over(COUNTY_Points, CBSA) #Point in Polygon
 COUNTY_Points@data <- cbind(COUNTY_Points@data, o)# Add the attributes back county
 COUNTY_Points <- COUNTY_Points[!is.na(COUNTY_Points@data$CBSAFP), ]# Use the NA values to remove those points not within MSA definitions
 
-setwd("~/US_workplace_classification")
-saveRDS(COUNTY_Points, file="COUNTY_Points.rds")
-saveRDS(CBSA, file="CBSA.rds")
+
 
 ####################################
 # Create Block MSA Shapefiles
@@ -98,7 +111,7 @@ saveRDS(CBSA, file="CBSA.rds")
 
 setwd("~/US_workplace_classification/blocks")
 
-BLOCK_Points <- SpatialPointsDataFrame(coords = coordinates(poly.data), data = data.frame(poly.data@data), proj4string = CRS(proj4string(poly.data)))#Create Point version County
+BLOCK_Points <- SpatialPointsDataFrame(coords = coordinates(poly.data), data = data.frame(poly.data@data), proj4string = CRS(proj4string(poly.data)))#Create Point version Blocks
 
 o <- over(BLOCK_Points, CBSA) #Point in Polygon
 BLOCK_Points@data <- cbind(BLOCK_Points@data, o)# Add the attributes back to blocks
@@ -111,16 +124,16 @@ for (i in 1:length(MSA_list)){
   MSA_Blocks <- BLOCK_Points@data[BLOCK_Points@data$GEOID == MSA_list[i],"GEOID10"]
   
   tmp <- poly.data[poly.data@data$GEOID10 %in% MSA_Blocks,] #Get the polygons within MSA
-  tmp <- tmp[tmp@data$AWATER10 != 0,]
-  tmp@data <- tmp@data[c("GEOID10","AWATER10")]
+  tmp <- tmp[tmp@data$ALAND10 != 0,]
+  tmp@data <- tmp@data[c("GEOID10","AWATER10","ALAND10")]
   assign(paste0("BLOCKS_MSA_",paste(MSA_list[i])),tmp) #Save MSA blocks
   writeOGR(tmp, ".", paste0("Block_MSA_",MSA_list[i]), driver="ESRI Shapefile")
   rm(tmp)
   
 }
 
-rm(poly.data) #Remove integrated file
-rm(BLOCK_Points) #Remove integrated points file
+#rm(poly.data) #Remove integrated file
+#rm(BLOCK_Points) #Remove integrated points file
 
 #Create MSA Block list
 
@@ -134,11 +147,13 @@ for (i in 1:length(MSA_list)){
 }
 
 
-
-
-save.image("data.Rdata")
-
-
+setwd("~/US_workplace_classification")
+saveRDS(COUNTY_Points, file="COUNTY_Points.rds")
+saveRDS(CBSA, file="CBSA.rds")
+saveRDS(BLOCK_Points, file="BLOCK_Points.rds")
+saveRDS(poly.data, file="poly.data.rds")
+saveRDS(COUNTY, file="COUNTY.rds")
+save(BLOCKS_MSA_12060,BLOCKS_MSA_16980,BLOCKS_MSA_19100,BLOCKS_MSA_19820,BLOCKS_MSA_26420,BLOCKS_MSA_31080,BLOCKS_MSA_33100, BLOCKS_MSA_35620,BLOCKS_MSA_37980,BLOCKS_MSA_40140,BLOCKS_MSA_41860,BLOCKS_MSA_42660,file="BLOCKS_MSA_Sep.Rdata")
 
 
 
