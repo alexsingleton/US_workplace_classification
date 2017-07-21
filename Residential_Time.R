@@ -19,7 +19,6 @@ setwd("~/US_workplace_classification")
 
 # Read shapefiles
 COUNTY_Points <- readRDS("COUNTY_Points.rds")
-poly.data <- readRDS("poly.data.rds")
 # FIPS
 FIPS_USPS <- fread("FIPS_USPS_CODE.csv") #Lookup from: https://www.census.gov/geo/reference/ansi_statetables.html
 
@@ -67,6 +66,8 @@ for (i in 1:length(seq(2002, 2014, 1))) { #download loop
 
 #List of MSA codes (top 15 pop - https://en.wikipedia.org/wiki/List_of_Metropolitan_Statistical_Areas)
 CBSAFP <- c('35620','31080','16980','19100','26420','47900','37980','33100','12060','14460','41860','38060','40140','19820','42660')
+CBSAFP_remove <- c('47900','14460','38060') #DC,Boston
+CBSAFP <- setdiff(CBSAFP,CBSAFP_remove)
 
 MSA_list <- as.numeric(CBSAFP)#Create a list of MSA
 
@@ -111,10 +112,10 @@ for (i in 1:length(paste0("MSA_",CBSAFP))) { #loop through each MSA
 }
 
 #Create combined MSA object
-MSA_All <- do.call(rbind, list(MSA_35620, MSA_31080, MSA_16980, MSA_19100, MSA_26420, MSA_37980, MSA_33100, MSA_12060, MSA_41860, MSA_38060, MSA_40140, MSA_19820, MSA_42660))
+MSA_All <- do.call(rbind, list(MSA_35620, MSA_31080, MSA_16980, MSA_19100, MSA_26420, MSA_37980, MSA_33100, MSA_12060, MSA_41860, MSA_40140, MSA_19820, MSA_42660))
 
 #remove individual MSA objects
-rm(list=c("MSA_35620","MSA_31080","MSA_16980","MSA_19100","MSA_26420","MSA_37980","MSA_33100","MSA_12060","MSA_41860","MSA_38060","MSA_40140","MSA_19820","MSA_42660"))
+rm(list=c("MSA_35620","MSA_31080","MSA_16980","MSA_19100","MSA_26420","MSA_37980","MSA_33100","MSA_12060","MSA_41860","MSA_40140","MSA_19820","MSA_42660"))
 
 ######################################################################
 # Create year files and calc rates
@@ -138,19 +139,12 @@ for (i in 1:length(yr_list)){
 ################################################################################
 
 # Read blocks for MSA
-all_block_IDs <- NA
 
-for (i in 1:length(MSA_list)){
-  assign(paste0("Block_MSA_",MSA_list[i]),readOGR("./blocks/", paste0("Block_MSA_",MSA_list[i])))  
-  length(unique(get(paste0("Block_MSA_",MSA_list[i]))$GEOID10))
-  nrow(get(paste0("Block_MSA_",MSA_list[i]))) #table rows
-  
-  all_block_IDs <- c(all_block_IDs,as.character(get(paste0("Block_MSA_",MSA_list[i]))$GEOID10))
-}
-
-
-
+poly.data <- readRDS("poly.data.rds")
 all_block_IDs <- data.table(poly.data@data$GEOID10) 
+rm(poly.data)# Remove - as large
+
+##
 
 #Create a data table showing which blocks have data by year
 
@@ -183,8 +177,10 @@ all_blocks_no_data <- all_block_IDs[rowSums(is.na(all_block_IDs))==11, V1]
 # Remove blocks with no data for 2004 - 2014 / calc rates again
 ################################################################################
 
+rm(list=setdiff(ls(), c("MSA_All","all_blocks_no_data","missing_blocks")))
+
 out_tab <- MSA_All[!res_workplace %in% all_blocks_no_data,]#remove blocks with no data
-out_tab <- out_tab[,colnames(out_tab)[3:52],with=FALSE]/out_tab[,C000] * 100 #convert to percent
+out_tab <- out_tab[,colnames(out_tab)[3:42],with=FALSE]/out_tab[,C000] * 100 #convert to percent
 out_tab[,res_workplace:= MSA_All[!res_workplace %in% all_blocks_no_data,res_workplace]] #Add block code
 out_tab[,TC:= MSA_All[!res_workplace %in% all_blocks_no_data,C000]] #Add total count
 out_tab[!res_workplace %in% all_blocks_no_data,year:= MSA_All[!res_workplace %in% all_blocks_no_data,year]] #Add year ID
@@ -194,10 +190,20 @@ yr_list <- yr_list[!yr_list %in% c("2002","2003")]#2004 - 2014 only - 2002 & 200
 
 for (i in 1:length(yr_list)){ 
   
-  assign(paste0("MSA_",yr_list[i]),out_tab[year==yr_list[i]])
+  assign(paste0("MSA_RES_",yr_list[i]),out_tab[year==yr_list[i]])
   #write.csv(assign(paste0("MSA_",yr_list[i]),out_tab[year==yr_list[i]]),paste0("MSA_",yr_list[i],".csv"),row.names = FALSE) Optional write csv
   
 }
+
+
+save(MSA_RES_2004,MSA_RES_2005,MSA_RES_2006,MSA_RES_2007,MSA_RES_2008,MSA_RES_2009,MSA_RES_2010,MSA_RES_2011,MSA_RES_2012,MSA_RES_2013,MSA_RES_2014,file="./Census_Files/MSA_RES_CENSUS.Rdata")
+
+
+
+
+
+
+
 
 
 ################################################################################
