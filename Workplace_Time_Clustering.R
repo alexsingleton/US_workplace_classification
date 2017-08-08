@@ -3,7 +3,7 @@ setwd("~/US_workplace_classification")
 options(scipen=999)
 
 #Load Packages
-packages <- c("R.utils","data.table","RCurl","bit64","maptools","rgdal","rgeos","cluster","plyr")
+packages <- c("fmsb","radarchart","R.utils","data.table","RCurl","bit64","maptools","rgdal","rgeos","cluster","plyr")
 for (package in packages){
   if(paste(package) %in% rownames(installed.packages()) == FALSE) {install.packages(paste(package))}
   library(paste(package),character.only=TRUE)
@@ -197,33 +197,39 @@ optimal_cluster <- function(k,df,year,runs){
 }
 
 
-results_WRK_WP_04 <- optimal_cluster(7,MSA_WRK_2004.h2o,2004,10000)
-results_WRK_WP_05 <- optimal_cluster(7,MSA_WRK_2005.h2o,2005,10000)
-results_WRK_WP_06 <- optimal_cluster(7,MSA_WRK_2006.h2o,2006,10000)
-results_WRK_WP_07 <- optimal_cluster(7,MSA_WRK_2007.h2o,2007,10000)
-results_WRK_WP_08 <- optimal_cluster(7,MSA_WRK_2008.h2o,2008,10000)
-results_WRK_WP_09 <- optimal_cluster(7,MSA_WRK_2009.h2o,2009,10000)
-results_WRK_WP_10 <- optimal_cluster(7,MSA_WRK_2010.h2o,2010,10000)
-results_WRK_WP_11 <- optimal_cluster(7,MSA_WRK_2011.h2o,2011,10000)
-results_WRK_WP_12 <- optimal_cluster(7,MSA_WRK_2012.h2o,2012,10000)
-results_WRK_WP_13 <- optimal_cluster(7,MSA_WRK_2013.h2o,2013,10000)
-results_WRK_WP_14 <- optimal_cluster(7,MSA_WRK_2014.h2o,2014,10000)
+results_WRK_WP_04 <- optimal_cluster(3,MSA_WRK_2004.h2o,2004,1000)
+results_WRK_WP_05 <- optimal_cluster(3,MSA_WRK_2005.h2o,2005,1000)
+results_WRK_WP_06 <- optimal_cluster(3,MSA_WRK_2006.h2o,2006,1000)
+results_WRK_WP_07 <- optimal_cluster(3,MSA_WRK_2007.h2o,2007,1000)
+results_WRK_WP_08 <- optimal_cluster(3,MSA_WRK_2008.h2o,2008,1000)
+results_WRK_WP_09 <- optimal_cluster(3,MSA_WRK_2009.h2o,2009,1000)
+results_WRK_WP_10 <- optimal_cluster(3,MSA_WRK_2010.h2o,2010,1000)
+results_WRK_WP_11 <- optimal_cluster(3,MSA_WRK_2011.h2o,2011,1000)
+results_WRK_WP_12 <- optimal_cluster(3,MSA_WRK_2012.h2o,2012,1000)
+results_WRK_WP_13 <- optimal_cluster(3,MSA_WRK_2013.h2o,2013,1000)
+results_WRK_WP_14 <- optimal_cluster(3,MSA_WRK_2014.h2o,2014,1000)
 
 
 
 # Save Results
-save(results_WRK_WP_04,results_WRK_WP_05,results_WRK_WP_06,results_WRK_WP_07,results_WRK_WP_08,results_WRK_WP_09,results_WRK_WP_10,results_WRK_WP_11,results_WRK_WP_12,results_WRK_WP_13,results_WRK_WP_14,file="./Results/Work/Clusters_SuperG/MSA_WRK_CENSUS_7_Clusters.Rdata")
+save(results_WRK_WP_04,results_WRK_WP_05,results_WRK_WP_06,results_WRK_WP_07,results_WRK_WP_08,results_WRK_WP_09,results_WRK_WP_10,results_WRK_WP_11,results_WRK_WP_12,results_WRK_WP_13,results_WRK_WP_14,file="./Results/Work/Clusters_SuperG/MSA_WRK_CENSUS_3_Clusters.Rdata")
 
 
 
 
 ######################
-#Compare cluster solutions
+#Compare cluster solutions & create lookup table
 ######################
 # Read blocks for MSA
 poly.data <- readRDS("poly.data.rds")
 
 x <- results_WRK_WP_04$lookup
+
+#Setup lookup table...
+final_lookup <- as.data.frame(poly.data@data$GEOID10)
+colnames(final_lookup) <- c("block_workplace")
+final_lookup <- merge(final_lookup,results_WRK_WP_04$lookup,by="block_workplace",all.x=TRUE)
+colnames(final_lookup) <- c("block_workplace","results_WRK_WP_04")
 
 
 compare_clusters <- function (x,y){
@@ -239,11 +245,6 @@ compare_clusters <- function (x,y){
 }
 
 
-#Setup lookup table...
-final_lookup <- as.data.frame(poly.data@data$GEOID10)
-colnames(final_lookup) <- c("block_workplace")
-final_lookup <- merge(final_lookup,results_WRK_WP_04$lookup,by="block_workplace",all.x=TRUE)
-colnames(final_lookup) <- c("block_workplace","results_WRK_WP_04")
 
 ys <- c("results_WRK_WP_05","results_WRK_WP_06","results_WRK_WP_07","results_WRK_WP_08","results_WRK_WP_09","results_WRK_WP_10","results_WRK_WP_11","results_WRK_WP_12","results_WRK_WP_13","results_WRK_WP_14")
 
@@ -256,17 +257,47 @@ for (i in 1:length(ys)){
   final_lookup <- merge(final_lookup,tmp2,by="block_workplace",all.x=TRUE)
 }
 
-#write.csv(final_lookup,"./Results/Work/Clusters_SuperG/final_WRK_04_14_lookup.csv")
+write.csv(final_lookup,"./Results/Work/Clusters_SuperG/MSA_WRK_CENSUS_3_Clusters_Lookup.csv")
 
-save(final_lookup,file="./Results/Work/Clusters_SuperG/MSA_WRK_04_14_CENSUS.Rdata")
+save(final_lookup,file="./Results/Work/Clusters_SuperG/MSA_WRK_CENSUS_3_Clusters_Lookup.Rdata")
 
 
 
+##########################
+# Describe Clusters ######
+##########################
 
+# Append classification
+clusters_04 <- data.frame(block_workplace=final_lookup$block_workplace,results_WRK_WP_04=final_lookup$results_WRK_WP_04) #Use 2004 data to create profile
+data_04 <- subset(MSA_WRK_2004, select = c("block_workplace",i_cols), TC > limit)
+data_04 <- merge(data_04,clusters_04,by.x="block_workplace",by.y="block_workplace",all.x=TRUE)
 
+# Cluster mean
+group_means <- (data_04[,-"block_workplace"] %>% 
+  group_by(results_WRK_WP_04) %>%
+  summarise_all(funs(mean)))
+# Overall mean
+all_means <- (data_04[,-"block_workplace"] %>% 
+               summarise_all(funs(mean)))
+# Combine cluster means and overall means
+group_means <- rbind(group_means,all_means)[-1] 
 
+# Calculate index scores
+index_scores <- data.frame(lapply(group_means, function(X) X/X[4]*100))[1:3,]
+labs <-c("Workers age 29 or younger","workers age 30 to 54","workers age 55 or older", "Earnings $1250/month or less","Earnings $1251/month to $3333/month","earnings greater than $3333/month",
+         "Agriculture","Mining","Utilities","Construction","Manufacturing","Wholesale","Retail","Transportation and Warehousing","Information",
+         "Finance and Insurance","Real Estate","Professional...","Management...","Administrative and Support and Waste","Education","Health","Arts, Entertainment, and Recreation",
+         "Accommodation and Food Services","Other Services","Public Administration")
 
+# Transpose and assign SuperGroup code
+index_scores <- data.frame(t(index_scores))
+colnames(index_scores) <- c("Retail & Leisure","Blue Collar","White Collar")
+rownames(index_scores) <- labs
 
+#Plot chart
+cols <-col2rgb(c("#94BA65","#2790B0","#C7919D"))
+chartJSRadar(scores = as.list(index_scores), labs = labs, maxScale = 350,labelSize = 8,addDots = FALSE,colMatrix = cols)
+########################################################################################################
 
 
 
@@ -292,153 +323,11 @@ save(final_lookup,file="./Results/Work/Clusters_SuperG/MSA_WRK_04_14_CENSUS.Rdat
 
 
 
-#Download Files - residential - 2002 - 2014
 
-for (i in 1:length(seq(2002, 2014, 1))) {
-  dl_file <- paste0("ca_rac_S000_JT00_",seq(2002, 2014, 1)[i],".csv.gz")
-  download.file(paste0("http://lehd.ces.census.gov/data/lodes/LODES7/ca/rac/",dl_file),dl_file) #CA - All Jobs - 2012 OD Flow
-  gunzip(dl_file)
-  assign(paste0("residential_",seq(2002, 2014, 1)[i]),fread(paste0("ca_rac_S000_JT00_",seq(2002, 2014, 1)[i],".csv")))
-  
-  all_blk <- c(all_blk,as.numeric(get(paste0("residential_",seq(2002, 2014, 1)[i]))[,h_geocode]))
-}
 
-all_blk <- data.table(unique(all_blk))[-1]
 
 
 
-#Create workplace - residential files for each year
-for (i in 1:length(seq(2002, 2014, 1))) {
-  #Temp_Res
-  assign("temp_res",subset(get(paste0("residential_",seq(2002, 2014, 1)[i])),select = c("h_geocode","C000")))
-  colnames(temp_res) <- c("Block","Residential")
-  #Temp_wrk
-  assign("temp_wrk",subset(get(paste0("workplace_",seq(2002, 2014, 1)[i])),select = c("w_geocode","C000")))
-  colnames(temp_wrk) <- c("Block","Workplace")
-  #create combined work - residence
-  assign(paste0("residence_workplace",seq(2002, 2014, 1)[i]),merge(temp_res,temp_wrk, by="Block"))
-  # Code add R, W, M
-  get(paste0("residence_workplace",seq(2002, 2014, 1)[i]))[,Type:=ifelse(Residential > Workplace,"R",ifelse(Residential == Workplace,"M","W"))]
-  
-  tmp <-  get(paste0("residence_workplace",seq(2002, 2014, 1)[i]))
-  
-  colnames(tmp) <- c("Block",paste0("res_",seq(2002, 2014, 1)[i]),paste0("wrk_",seq(2002, 2014, 1)[i]),paste0("type_",seq(2002, 2014, 1)[i]))
-  
-  all_blk <- merge(all_blk,get(paste0("residence_workplace",seq(2002, 2014, 1)[i])),by.x="V1",by.y="Block",all.x=TRUE)
-  
-}
-
-
-#Limit to SF Area
-
-all_blk <- all_blk[,Block:=paste0("0",as.character(V1))]
-all_blk <-  all_blk[Block %in% block_list,]
-#Limit to where at least
-#block_list2 <- all_blk[all_blk$wrk_2002 >= 40 | all_blk$wrk_2003 >= 40 | all_blk$wrk_2004 >= 40 | all_blk$wrk_2005 >= 40 | all_blk$wrk_2006 >= 40 | all_blk$wrk_2007 >= 40 | all_blk$wrk_2008 >= 40 | all_blk$wrk_2009 >= 40 | all_blk$wrk_2010 >= 40 | all_blk$wrk_2011 >= 40 | all_blk$wrk_2012 >= 40 | all_blk$wrk_2013 >= 40 | all_blk$wrk_2014 >= 40,Block]
-#all_blk <-  all_blk[Block %in% block_list2,]
-
-
-
-
-#Build unified file for clustering
-
-unified_input <- list()
-
-for (i in 1:length(seq(2002, 2014, 1))) {
-  #Just job type variables
-  assign("temp_wrk",subset(get(paste0("workplace_",seq(2002, 2014, 1)[i])),select=c("w_geocode","C000",colnames(get(paste0("workplace_",seq(2002, 2014, 1)[i])))[grepl("CN",colnames(get(paste0("workplace_",seq(2002, 2014, 1)[i]))))])))
-  temp_wrk$w_geocode <- paste0(temp_wrk$w_geocode,"_",seq(2002, 2014, 1)[i])#create year version of Block code
-  temp_wrk <- subset(temp_wrk,C000 > 40)#Remove 40 counts
-  unified_input<-rbindlist(list(unified_input,temp_wrk))#rbind years
-}
-
-
-#Calculate Percentages
-workplace <- as.data.frame(unified_input)#convert back to data frame
-workplace_PCT <- workplace[,3:ncol(workplace)]/workplace[,2]
-workplace_PCT$geocode <- workplace$w_geocode
-
-
-#workplace_Index <- ((workplace[,3:ncol(workplace)]/workplace[,2]) / (sum(workplace[,3:ncol(workplace)])/sum(workplace[,2]))) *100
-#workplace_Index$geocode <- workplace$w_geocode
-
-
-#input <- workplace_PCT[,1:20]
-
-
-
-
-input <- scale(workplace_PCT[,1:20])
-#input2 <- scale(workplace_Index[,1:20])
-
-
-#Scree Plot
-#wss <- (nrow(input)-1)*sum(apply(input,2,var))
-#for (i in 2:8) wss[i] <- sum(kmeans(input, centers=i,nstart=3)$withinss)
-#plot(2:8, wss[-1], type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
-
-
-#Clustergram
-#source("https://raw.github.com/talgalili/R-code-snippets/master/clustergram.r")
-#source("clustergram_ADS.r")
-clustergram(input2, k.range = 4:10, line.width = 0.0004)
-
-
-#Explore input histograms
-pdf("histograms.pdf")
-par(mfrow = c(2, 3))
-for (i in 1:(ncol(workplace_PCT)-1)){
-  hist(workplace_PCT[,i], main=paste(colnames(workplace_PCT)[i]))
-}
-dev.off()
-
-#Create Clusters
-cluster_results <- kmeans(input,6,nstart=1000,iter.max=500)
-
-
-#cluster_results_index <- kmeans(input2,6,nstart=500,iter.max=500)
-
-
-#Viz Clusters
-#source("http://pcwww.liv.ac.uk/~william/Geodemographic%20Classifiability/func%20CreateRadialPlot.r")
-#viz <- data.frame(group=1:6,cluster_results$centers)
-#colnames(viz) <- c("group","Agriculture, Forestry, Fishing and Hunting","Mining, Quarrying, and Oil and Gas Extraction","Utilities","Construction","Manufacturing","Wholesale Trade","Retail Trade","Transportation and Warehousing","Information","Finance and Insurance","Real Estate and Rental and Leasing","Professional, Scientific, and Technical Services","Management of Companies and Enterprises","Admin. / Support / Waste / Remediation","Educational Services","Health Care and Social Assistance","Arts, Entertainment, and Recreation","Accommodation and Food Services","Other Services","Public Administration")
-#CreateRadialPlot(viz, plot.extent.x = 1.8,grid.max = 10,grid.min = -0.4,grid.label.size=2,axis.label.size=2)
-
-
-
-
-####################################################################################################
-# Test K
-####################################################################################################
-input_test <- input_split[[5]]
-kmax = 5
-totwss = list() # will be filled with total sum of within group sum squares
-kmfit = list() # create and empty list
-for (i in 2:kmax){
-  kclus = kmeans(input_test,centers=i,iter.max=200,nstart=5)
-  totwss[i] = kclus$tot.withinss
-  kmfit[[i]] = kclus
-}
-
-kmeansAIC = function(fit){
-  
-  m = ncol(fit$centers)
-  n = length(fit$cluster)
-  k = nrow(fit$centers)
-  D = fit$tot.withinss
-  return(D + 2*m*k)
-}
-aic=sapply(kmfit,kmeansAIC)
-plot(seq(1,kmax),aic,xlab="Number of clusters",ylab="AIC",pch=20,cex=2)
-
-
-v = -diff(unlist(aic))
-nv = length(v)
-fom = v[1:(nv-1)]/v[2:nv]
-nclus = which.max(fom)+1
-cat("The apparent number of clusters is: ",nclus,"\n")
-points(nclus,aic[nclus],col=2,pch=20,cex=2)
 
 
 
@@ -569,33 +458,6 @@ sp.2014_Block_Cluster@data <- sp.2014_Block_Cluster@data[,!colnames(sp.2014_Bloc
 sp.2014_Block_Cluster@data = data.frame(sp.2014_Block_Cluster@data, lookup_final[match(sp.2014_Block_Cluster@data[, "Block"], lookup_final[, "Block"]), ])
 
 writeOGR(sp.2014_Block_Cluster,".","block_workplace_jobs_class",driver = "ESRI Shapefile")
-
-
-###################################################################################################
-#Create Index Scores - Super Groups
-###################################################################################################
-
-clusters <- data.frame(cluster_results$cluster)
-colnames(clusters) <- "Cluster"
-index_split <- split(workplace_PCT[,1:20], clusters)
-df <- round((do.call("rbind", lapply(index_split, function(x) apply(x,2,mean))) / apply(workplace_PCT[,1:20],2,mean)) * 100)
-
-#Create Plot
-colnames(df) <- c("Agriculture, Forestry, Fishing and Hunting","Mining, Quarrying, and Oil and Gas Extraction","Utilities","Construction","Manufacturing","Wholesale Trade","Retail Trade","Transportation and Warehousing","Information","Finance and Insurance","Real Estate and Rental and Leasing","Professional, Scientific, and Technical Services","Management of Companies and Enterprises","Admin. / Support / Waste / Remediation","Educational Services","Health Care and Social Assistance","Arts, Entertainment, and Recreation","Accommodation and Food Services","Other Services","Public Administration")
-melted_df <- melt(df)
-cs <- c("#89C5DA", "#DA5724", "#74D944", "#CE50CA", "#3F4921", "#C0717C", "#CBD588", "#5F7FC7","#673770", "#D3D93E", "#38333E", "#508578", "#D7C1B1", "#689030", "#AD6F3B", "#CD9BCD", "#D14285", "#6DDE88", "#652926", "#7FDCC0")
-
-p <- ggplot(as.data.frame(melted_df), aes(melted_df$Var1,log(melted_df$value)))
-p + geom_point(aes(colour = factor(melted_df$Var2),shape = factor(melted_df$Var2)), size = 4) +
-  scale_shape_manual(values=1:nlevels(melted_df$Var2)) +
-  geom_hline(yintercept=log(100))  + scale_colour_manual(values = cs) +
-  geom_hline(yintercept=log(200), color="black", linetype="dashed") + 
-  geom_hline(yintercept=log(50), color="black", linetype="dashed") + 
-  scale_x_discrete(1:length(unique(melted_df$Var1)),name="Cluster") + 
-  theme(legend.title=element_blank()) +
-  labs( y= "log(index score)")
-ggsave("index_graph.pdf", width = 29.7, height = 21, units = "cm")
-
 
 
 
