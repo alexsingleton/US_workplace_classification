@@ -111,18 +111,7 @@ ggplot(data=test, aes(K, value, colour = variable)) +
   geom_point()
 ggsave("WSS_2004_2014_WRK.pdf")
 
-# Test Clustergram 2014
 
-source("https://gist.githubusercontent.com/hadley/439761/raw/a7027786f34e4819dc411496b61a34c02f7c1586/clustergram-had.r")
-
-dat <- data.frame(MSA_WRK_2014[TC > limit]) #Get DF
-dat <- dat[,i_cols] #Cut to data
-
-k_2014 <- many_kmeans(dat, 2:15,nstart = 100)
-pr <- prcomp(dat)
-pr1 <- predict(pr)[, 1]
-pr2 <- predict(pr)[, 2]
-plot(clustergram(k_2014, pr1))
 
 
 
@@ -301,135 +290,160 @@ chartJSRadar(scores = as.list(index_scores), labs = labs, maxScale = 350,labelSi
 
 
 
+####################################################
+# Explore potential for SubGroups ##################
+####################################################
+
+clustergramSub_YYYY <- function(year){
+  
+  dat <- data.frame(get(paste0("MSA_WRK_",year))[TC > limit]) #Get DF
+  dat <- dat[,c("block_workplace",i_cols)] #Cut to data
+  lookup_tmp <- final_lookup[,c("block_workplace",paste0("results_WRK_WP_",substr(year,3,4)))]
+  dat <- merge(dat,lookup_tmp,by="block_workplace",all.x=TRUE)#Append lookup
+  
+  dat <- split(dat,dat[,paste0("results_WRK_WP_",substr(year,3,4))])
+  
+  results_out <- list()
+  
+  for (i in 1:length(dat)){
+  
+          dat_tmp <- dat[[i]]
+
+          tmp <- many_kmeans(dat_tmp[,i_cols], 2:4,nstart = 100)
+          pr <- prcomp(dat_tmp[,i_cols])
+          pr1 <- predict(pr)[, 1]
+          pr2 <- predict(pr)[, 2]
+          
+          pdf(paste0("Clustergram_MSA_",year,"_SUPERG_",LETTERS[i],"_WRK.pdf"))
+          print(plot(clustergram(tmp, pr1)))
+          dev.off()
+          
+          results_out <- c(results_out, tmp) # Append k cluster resutls to the list
+  
+          rm(dat_tmp)
+  }
+  
+  return(results_out)
+}
+
+k_2004_Sub <- clustergramSub_YYYY(2004)
+k_2005_Sub <- clustergramSub_YYYY(2005)
+k_2006_Sub <- clustergramSub_YYYY(2006)
+k_2007_Sub <- clustergramSub_YYYY(2007)
+k_2008_Sub <- clustergramSub_YYYY(2008)
+k_2009_Sub <- clustergramSub_YYYY(2009)
+k_2010_Sub <- clustergramSub_YYYY(2010)
+k_2011_Sub <- clustergramSub_YYYY(2011)
+k_2012_Sub <- clustergramSub_YYYY(2012)
+k_2013_Sub <- clustergramSub_YYYY(2013)
+k_2014_Sub <- clustergramSub_YYYY(2014)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# A) Retail & leisure - 3
+# B) Blue Colllar - 2
+# C) White Collar - 2
 
 ###################################################################################################
 ## Create sub groups
 ###################################################################################################
 
+# Load the subsets of the data into H20
+year <- 2004:2014
+  
+for (i in 1:length(year)){
+    # Get the year data and merge on lookup
+    dat <- data.frame(get(paste0("MSA_WRK_",year[i]))[TC > limit]) #Get DF
+    dat <- dat[,c("block_workplace",i_cols)] #Cut to data
+    lookup_tmp <- final_lookup[,c("block_workplace",paste0("results_WRK_WP_",substr(year[i],3,4)))]
+    dat <- merge(dat,lookup_tmp,by="block_workplace",all.x=TRUE)#Append lookup
+    
+    # Split by cluster
+    dat <- split(dat,dat[,paste0("results_WRK_WP_",substr(year[i],3,4))])
+    
+    # Load the data by cluster into H20
+          for (n in 1:length(dat)) {
+                assign(paste0("MSA_WRK_2004_",LETTERS[n],".h2o"),as.h2o(dat[[n]], destination_frame=paste0("MSA_WRK_2004_",LETTERS[n],".h2o")))
+          }
+}
+
+# Create sub group clusters
+
+# 2004
+results_WRK_WP_04_A <- optimal_cluster(3,MSA_WRK_2004_A.h2o,2004,1000)
+results_WRK_WP_04_B <- optimal_cluster(2,MSA_WRK_2004_B.h2o,2004,1000)
+results_WRK_WP_04_C <- optimal_cluster(2,MSA_WRK_2004_C.h2o,2004,1000)
+
+# 2005
+results_WRK_WP_05_A <- optimal_cluster(3,MSA_WRK_2005_A.h2o,2005,1000)
+results_WRK_WP_05_B <- optimal_cluster(2,MSA_WRK_2005_B.h2o,2005,1000)
+results_WRK_WP_05_C <- optimal_cluster(2,MSA_WRK_2005_C.h2o,2005,1000)
+
+# 2006
+results_WRK_WP_06_A <- optimal_cluster(3,MSA_WRK_2006_A.h2o,2006,1000)
+results_WRK_WP_06_B <- optimal_cluster(2,MSA_WRK_2006_B.h2o,2006,1000)
+results_WRK_WP_06_C <- optimal_cluster(2,MSA_WRK_2006_C.h2o,2006,1000)
+
+# 2007
+results_WRK_WP_07_A <- optimal_cluster(3,MSA_WRK_2007_A.h2o,2007,1000)
+results_WRK_WP_07_B <- optimal_cluster(2,MSA_WRK_2007_B.h2o,2007,1000)
+results_WRK_WP_07_C <- optimal_cluster(2,MSA_WRK_2007_C.h2o,2007,1000)
+
+# 2008
+results_WRK_WP_08_A <- optimal_cluster(3,MSA_WRK_2008_A.h2o,2008,1000)
+results_WRK_WP_08_B <- optimal_cluster(2,MSA_WRK_2008_B.h2o,2008,1000)
+results_WRK_WP_08_C <- optimal_cluster(2,MSA_WRK_2008_C.h2o,2008,1000)
+
+# 2009
+results_WRK_WP_09_A <- optimal_cluster(3,MSA_WRK_2009_A.h2o,2009,1000)
+results_WRK_WP_09_B <- optimal_cluster(2,MSA_WRK_2009_B.h2o,2009,1000)
+results_WRK_WP_09_C <- optimal_cluster(2,MSA_WRK_2009_C.h2o,2009,1000)
+
+# 2010
+results_WRK_WP_10_A <- optimal_cluster(3,MSA_WRK_2010_A.h2o,2010,1000)
+results_WRK_WP_10_B <- optimal_cluster(2,MSA_WRK_2010_B.h2o,2010,1000)
+results_WRK_WP_10_C <- optimal_cluster(2,MSA_WRK_2010_C.h2o,2010,1000)
+
+# 2011
+results_WRK_WP_11_A <- optimal_cluster(3,MSA_WRK_2011_A.h2o,2011,1000)
+results_WRK_WP_11_B <- optimal_cluster(2,MSA_WRK_2011_B.h2o,2011,1000)
+results_WRK_WP_11_C <- optimal_cluster(2,MSA_WRK_2011_C.h2o,2011,1000)
+
+# 2012
+results_WRK_WP_12_A <- optimal_cluster(3,MSA_WRK_2012_A.h2o,2012,1000)
+results_WRK_WP_12_B <- optimal_cluster(2,MSA_WRK_2012_B.h2o,2012,1000)
+results_WRK_WP_12_C <- optimal_cluster(2,MSA_WRK_2012_C.h2o,2012,1000)
+
+# 2013
+results_WRK_WP_13_A <- optimal_cluster(3,MSA_WRK_2013_A.h2o,2013,1000)
+results_WRK_WP_13_B <- optimal_cluster(2,MSA_WRK_2013_B.h2o,2013,1000)
+results_WRK_WP_13_C <- optimal_cluster(2,MSA_WRK_2013_C.h2o,2013,1000)
+
+# 2014
+results_WRK_WP_14_A <- optimal_cluster(3,MSA_WRK_2014_A.h2o,2014,1000)
+results_WRK_WP_14_B <- optimal_cluster(2,MSA_WRK_2014_B.h2o,2014,1000)
+results_WRK_WP_14_C <- optimal_cluster(2,MSA_WRK_2014_C.h2o,2014,1000)
 
 
 
-###
-#Group 3
-###
-
-#Create a split input
-input_split <- split(data.frame(input),cluster_results$cluster)
-#Cluster
-cluster_results_G3 <- kmeans(input_split[[3]],3,nstart=1000,iter.max=500)
-
-
-input_split <- split(workplace_PCT[,1:20],cluster_results$cluster)
-
-clusters <- data.frame(cluster_results_G3$cluster)
-colnames(clusters) <- "Cluster"
-index_split <- split(input_split[[3]], clusters)
-#Creating index score relative to the global mean
-df <- round((do.call("rbind", lapply(index_split, function(x) apply(x,2,mean))) / apply(workplace_PCT[,1:20],2,mean)) * 100)
-
-#Create Plot
-colnames(df) <- c("Agriculture, Forestry, Fishing and Hunting","Mining, Quarrying, and Oil and Gas Extraction","Utilities","Construction","Manufacturing","Wholesale Trade","Retail Trade","Transportation and Warehousing","Information","Finance and Insurance","Real Estate and Rental and Leasing","Professional, Scientific, and Technical Services","Management of Companies and Enterprises","Admin. / Support / Waste / Remediation","Educational Services","Health Care and Social Assistance","Arts, Entertainment, and Recreation","Accommodation and Food Services","Other Services","Public Administration")
-melted_df <- melt(df)
-cs <- c("#89C5DA", "#DA5724", "#74D944", "#CE50CA", "#3F4921", "#C0717C", "#CBD588", "#5F7FC7","#673770", "#D3D93E", "#38333E", "#508578", "#D7C1B1", "#689030", "#AD6F3B", "#CD9BCD", "#D14285", "#6DDE88", "#652926", "#7FDCC0")
-
-p <- ggplot(as.data.frame(melted_df), aes(melted_df$Var1,log(melted_df$value)))
-p + geom_point(aes(colour = factor(melted_df$Var2),shape = factor(melted_df$Var2)), size = 4) +
-  scale_shape_manual(values=1:nlevels(melted_df$Var2)) +
-  geom_hline(yintercept=log(100))  + scale_colour_manual(values = cs) +
-  geom_hline(yintercept=log(200), color="black", linetype="dashed") + 
-  geom_hline(yintercept=log(50), color="black", linetype="dashed") + 
-  scale_x_discrete(1:length(unique(melted_df$Var1)),name="Cluster") + 
-  theme(legend.title=element_blank()) +
-  labs( y= "log(index score)")
-ggsave("index_G3_graph.pdf", width = 29.7, height = 21, units = "cm")
-
-
-###
-#Group 6
-###
-
-#Create a split input
-input_split <- split(data.frame(input),cluster_results$cluster)
-#Cluster
-cluster_results_G6 <- kmeans(input_split[[6]],3,nstart=500,iter.max=500)
-
-
-input_split <- split(workplace_PCT[,1:20],cluster_results$cluster)
-
-clusters <- data.frame(cluster_results_G6$cluster)
-colnames(clusters) <- "Cluster"
-index_split <- split(input_split[[6]], clusters)
-#Creating index score relative to the global mean
-df <- round((do.call("rbind", lapply(index_split, function(x) apply(x,2,mean))) / apply(workplace_PCT[,1:20],2,mean)) * 100)
-
-#Create Plot
-colnames(df) <- c("Agriculture, Forestry, Fishing and Hunting","Mining, Quarrying, and Oil and Gas Extraction","Utilities","Construction","Manufacturing","Wholesale Trade","Retail Trade","Transportation and Warehousing","Information","Finance and Insurance","Real Estate and Rental and Leasing","Professional, Scientific, and Technical Services","Management of Companies and Enterprises","Admin. / Support / Waste / Remediation","Educational Services","Health Care and Social Assistance","Arts, Entertainment, and Recreation","Accommodation and Food Services","Other Services","Public Administration")
-melted_df <- melt(df)
-cs <- c("#89C5DA", "#DA5724", "#74D944", "#CE50CA", "#3F4921", "#C0717C", "#CBD588", "#5F7FC7","#673770", "#D3D93E", "#38333E", "#508578", "#D7C1B1", "#689030", "#AD6F3B", "#CD9BCD", "#D14285", "#6DDE88", "#652926", "#7FDCC0")
-
-p <- ggplot(as.data.frame(melted_df), aes(melted_df$Var1,log(melted_df$value)))
-p + geom_point(aes(colour = factor(melted_df$Var2),shape = factor(melted_df$Var2)), size = 4) +
-  scale_shape_manual(values=1:nlevels(melted_df$Var2)) +
-  geom_hline(yintercept=log(100))  + scale_colour_manual(values = cs) +
-  geom_hline(yintercept=log(200), color="black", linetype="dashed") + 
-  geom_hline(yintercept=log(50), color="black", linetype="dashed") + 
-  scale_x_discrete(1:length(unique(melted_df$Var1)),name="Cluster") + 
-  theme(legend.title=element_blank()) +
-  labs( y= "log(index score)")
-ggsave("index_G6_graph.pdf", width = 29.7, height = 21, units = "cm")
 
 
 
 
 
-#Create Single set of sub groups
 
-lapply(input_split,nrow)
 
-split_order <- as.numeric(unlist(lapply(input_split,row.names))) #creates a numeric list that the rows appear in the split inputs
 
-#Creates a sub group column (only clusters 3 and 6)
-all_subs <- c(rep(1,lapply(input_split,nrow)[1]),rep(2,lapply(input_split,nrow)[2]),cluster_results_G3$cluster,rep(4,lapply(input_split,nrow)[4]),rep(5,lapply(input_split,nrow)[5]),cluster_results_G6$cluster)
 
-#Create Lookup
-lookup <- data.frame(do.call('rbind', strsplit(as.character(workplace_PCT$geocode),'_',fixed=TRUE)),cluster_results$cluster)
-lookup$X1 <- paste0("0",as.character(lookup$X1))
-lookup <- lookup[split_order,] #Reorders to match the splits
-lookup$SubCluster <- all_subs
-colnames(lookup) <- c("geocode","Year","Cluster","SubCluster")
-lookup$SubCluster <- paste0(lookup$Cluster,".",lookup$SubCluster)
-lookup$SubCluster <- ifelse(lookup$SubCluster == 1.1, 1, ifelse(lookup$SubCluster == 2.2, 2, ifelse(lookup$SubCluster == 3.1, 3, ifelse(lookup$SubCluster == 3.2, 4, ifelse(lookup$SubCluster == 3.3, 5, ifelse(lookup$SubCluster == 4.4, 6, ifelse(lookup$SubCluster == 5.5, 7, ifelse(lookup$SubCluster == 6.1, 8, ifelse(lookup$SubCluster == 6.2, 9, ifelse(lookup$SubCluster == 6.3, 10, NA) ) ) ) ) ) ) ) ) ) 
-lookup_split <- split(lookup,lookup$Year)
+
+
+
+
+
+
+
+
+
+
 
 
 #Append lookup to spatial polygons
