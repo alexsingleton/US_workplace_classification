@@ -362,7 +362,7 @@ for (i in 1:length(year)){
     
     # Load the data by cluster into H20
           for (n in 1:length(dat)) {
-                assign(paste0("MSA_WRK_2004_",LETTERS[n],".h2o"),as.h2o(dat[[n]], destination_frame=paste0("MSA_WRK_2004_",LETTERS[n],".h2o")))
+                assign(paste0("MSA_WRK_",year[i],"_",LETTERS[n],".h2o"),as.h2o(dat[[n]], destination_frame=paste0("MSA_WRK_",year[i],"_",LETTERS[n],".h2o")))
           }
 }
 
@@ -424,7 +424,151 @@ results_WRK_WP_14_B <- optimal_cluster(2,MSA_WRK_2014_B.h2o,2014,1000)
 results_WRK_WP_14_C <- optimal_cluster(2,MSA_WRK_2014_C.h2o,2014,1000)
 
 
+save(results_WRK_WP_04_A,results_WRK_WP_04_B,results_WRK_WP_04_C,results_WRK_WP_05_A,results_WRK_WP_05_B,results_WRK_WP_05_C,results_WRK_WP_06_A,results_WRK_WP_06_B,results_WRK_WP_06_C,results_WRK_WP_07_A,results_WRK_WP_07_B,results_WRK_WP_07_C,results_WRK_WP_08_A,results_WRK_WP_08_B,results_WRK_WP_08_C,results_WRK_WP_09_A,results_WRK_WP_09_B,results_WRK_WP_09_C,results_WRK_WP_10_A,results_WRK_WP_10_B,results_WRK_WP_10_C,results_WRK_WP_11_A,results_WRK_WP_11_B,results_WRK_WP_11_C,results_WRK_WP_12_A,results_WRK_WP_12_B,results_WRK_WP_12_C,results_WRK_WP_13_A,results_WRK_WP_13_B,results_WRK_WP_13_C,results_WRK_WP_14_A,results_WRK_WP_14_B,results_WRK_WP_14_C,file="./Results/Work/Clusters_SubG/MSA_WRK_CENSUS_3_Clusters_Sub.Rdata")
 
+
+
+######################
+# Compare Sub group cluster solutions & create lookup table
+######################
+
+# A
+x <- results_WRK_WP_04_A$lookup
+
+#Setup lookup table...
+final_lookup <- as.data.frame(poly.data@data$GEOID10)
+colnames(final_lookup) <- c("block_workplace")
+final_lookup <- merge(final_lookup,results_WRK_WP_04_A$lookup,by="block_workplace",all.x=TRUE)
+colnames(final_lookup) <- c("block_workplace","results_WRK_WP_04_A")
+
+ys <- c("results_WRK_WP_05_A","results_WRK_WP_06_A","results_WRK_WP_07_A","results_WRK_WP_08_A","results_WRK_WP_09_A","results_WRK_WP_10_A","results_WRK_WP_11_A","results_WRK_WP_12_A","results_WRK_WP_13_A","results_WRK_WP_14_A")
+
+
+#Loop to create lookup
+for (i in 1:length(ys)){
+  tmp <-  compare_clusters(x,get(ys[i])$lookup)#make comparison and return list
+  tmp2 <- get(ys[i])$lookup#get comparison year
+  tmp2$predict <- mapvalues(tmp2$predict, from = tmp, to = as.character(rep(0:2)))#use plyr to match new numbering
+  colnames(tmp2) <- c("block_workplace",ys[i]) #change column names to reflect year
+  final_lookup <- merge(final_lookup,tmp2,by="block_workplace",all.x=TRUE)
+}
+
+
+final_lookup_A <- final_lookup
+
+########
+
+# B
+x <- results_WRK_WP_04_B$lookup
+
+#Setup lookup table...
+final_lookup <- as.data.frame(poly.data@data$GEOID10)
+colnames(final_lookup) <- c("block_workplace")
+final_lookup <- merge(final_lookup,results_WRK_WP_04_B$lookup,by="block_workplace",all.x=TRUE)
+colnames(final_lookup) <- c("block_workplace","results_WRK_WP_04_B")
+
+ys <- c("results_WRK_WP_05_B","results_WRK_WP_06_B","results_WRK_WP_07_B","results_WRK_WP_08_B","results_WRK_WP_09_B","results_WRK_WP_10_B","results_WRK_WP_11_B","results_WRK_WP_12_B","results_WRK_WP_13_B","results_WRK_WP_14_B")
+
+
+#Loop to create lookup
+for (i in 1:length(ys)){
+  tmp <-  compare_clusters(x,get(ys[i])$lookup)#make comparison and return list
+  tmp2 <- get(ys[i])$lookup#get comparison year
+  tmp2$predict <- mapvalues(tmp2$predict, from = tmp, to = as.character(rep(0:1)))#use plyr to match new numbering
+  colnames(tmp2) <- c("block_workplace",ys[i]) #change column names to reflect year
+  final_lookup <- merge(final_lookup,tmp2,by="block_workplace",all.x=TRUE)
+}
+
+
+final_lookup_B <- final_lookup
+
+
+
+########
+
+# C
+x <- results_WRK_WP_04_C$lookup
+
+#Setup lookup table...
+final_lookup <- as.data.frame(poly.data@data$GEOID10)
+colnames(final_lookup) <- c("block_workplace")
+final_lookup <- merge(final_lookup,results_WRK_WP_04_C$lookup,by="block_workplace",all.x=TRUE)
+colnames(final_lookup) <- c("block_workplace","results_WRK_WP_04_C")
+
+ys <- c("results_WRK_WP_05_C","results_WRK_WP_06_C","results_WRK_WP_07_C","results_WRK_WP_08_C","results_WRK_WP_09_C","results_WRK_WP_10_C","results_WRK_WP_11_C","results_WRK_WP_12_C","results_WRK_WP_13_C","results_WRK_WP_14_C")
+
+
+#Loop to create lookup
+for (i in 1:length(ys)){
+  tmp <-  compare_clusters(x,get(ys[i])$lookup)#make comparison and return list
+  tmp2 <- get(ys[i])$lookup#get comparison year
+  tmp2$predict <- mapvalues(tmp2$predict, from = tmp, to = as.character(rep(0:1)))#use plyr to match new numbering
+  colnames(tmp2) <- c("block_workplace",ys[i]) #change column names to reflect year
+  final_lookup <- merge(final_lookup,tmp2,by="block_workplace",all.x=TRUE)
+}
+
+
+final_lookup_C <- final_lookup
+
+
+# Remove Blank Records & Recode labels
+final_lookup_A <- final_lookup_A[rowSums(is.na(final_lookup_A[,colnames(final_lookup_A)[-1]])) != ncol(final_lookup_A[,colnames(final_lookup_A)[-1]]),]
+final_lookup_B <- final_lookup_B[rowSums(is.na(final_lookup_B[,colnames(final_lookup_B)[-1]])) != ncol(final_lookup_B[,colnames(final_lookup_B)[-1]]),]
+final_lookup_C <- final_lookup_C[rowSums(is.na(final_lookup_C[,colnames(final_lookup_C)[-1]])) != ncol(final_lookup_C[,colnames(final_lookup_C)[-1]]),]
+
+final_lookup_A[final_lookup_A=="0"]<-"A1"
+final_lookup_A[final_lookup_A=="1"]<-"A2"
+final_lookup_A[final_lookup_A=="2"]<-"A3"
+final_lookup_B[final_lookup_B=="0"]<-"B1"
+final_lookup_B[final_lookup_B=="1"]<-"B2"
+final_lookup_C[final_lookup_C=="0"]<-"C1"
+final_lookup_C[final_lookup_C=="1"]<-"C2"
+
+
+#Combine lookup
+
+year <- 2004:2014
+
+final_lookup_sub <- as.data.frame(poly.data@data$GEOID10)
+rm(poly.data)
+colnames(final_lookup_sub) <- "block_workplace"
+
+save(final_lookup_sub,final_lookup_A,final_lookup_B,final_lookup_C,file="./Results/Work/Clusters_SubG/MSA_WRK_CENSUS_3_Clusters_Sub_Lookup_non_unified.Rdata")
+
+#Convert to data tables
+final_lookup_sub <- data.table(final_lookup_sub, key="block_workplace")
+final_lookup_A <- data.table(final_lookup_A, key="block_workplace")
+final_lookup_B <- data.table(final_lookup_B, key="block_workplace")
+final_lookup_C <- data.table(final_lookup_C, key="block_workplace")
+
+
+#Loop to do the merges and build the lookup table
+for (i in 1:length(year)){
+
+tmp_A <- final_lookup_A[,c("block_workplace",paste0("results_WRK_WP_",substr(year[i],3,4),"_A")),with=FALSE]
+tmp_B <- final_lookup_B[,c("block_workplace",paste0("results_WRK_WP_",substr(year[i],3,4),"_B")),with=FALSE]
+tmp_C <- final_lookup_C[,c("block_workplace",paste0("results_WRK_WP_",substr(year[i],3,4),"_C")),with=FALSE]
+
+#bind tables & set key
+
+final_lookup_sub <- merge(final_lookup_sub,tmp_A,by="block_workplace",all.x=TRUE)
+final_lookup_sub <- merge(final_lookup_sub,tmp_B,by="block_workplace",all.x=TRUE)
+final_lookup_sub <- merge(final_lookup_sub,tmp_C,by="block_workplace",all.x=TRUE)
+
+rm(list = c("tmp_A","tmp_B","tmp_C"))
+}
+
+
+#Remove rows that are all NA
+
+
+final_lookup_sub <- final_lookup_sub[rowSums(is.na(final_lookup_A[,colnames(final_lookup_sub)[-1]])) != ncol(final_lookup_sub[,colnames(final_lookup_sub)[-1]]),]
+
+
+
+write.csv(final_lookup_sub,"./Results/Work/Clusters_SubG/MSA_WRK_CENSUS_3_Clusters_Lookup.csv")
+
+save(final_lookup_sub,file="./Results/Work/Clusters_SubG/MSA_WRK_CENSUS_3_Clusters_Lookup.Rdata")
 
 
 
