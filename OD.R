@@ -1,9 +1,9 @@
 #Set Working Directory and Options
-setwd("C:\\Users\\alexa\\Documents\\US_workplace_classification")
+setwd("/home/alex/US_workplace_classification")
 options(scipen=999)
 
 #Load Packages
-packages <- c("R.utils","data.table","RCurl","bit64","maptools","rgdal","rgeos","cluster","plyr","httr")
+packages <- c("R.utils","devtools","data.table","RCurl","bit64","maptools","rgdal","rgeos","cluster","plyr","httr","foreign","RMySQL","dplyr","rio","readxl","tidyr","stringr","igraph")
 for (package in packages){
 if(paste(package) %in% rownames(installed.packages()) == FALSE) {install.packages(paste(package))}
 library(paste(package),character.only=TRUE)
@@ -11,18 +11,8 @@ library(paste(package),character.only=TRUE)
 
 
 ####################
-# Download WAC Files
+# Download OD Files
 ##################
-
-
-# Read shapefiles
-#COUNTY_Points <- readRDS("COUNTY_Points.rds")
-# FIPS
-# FIPS_USPS <- fread("FIPS_USPS_CODE.csv") #Lookup from: https://www.census.gov/geo/reference/ansi_statetables.html
-
-
-
-#FIPS_USPS <- read.delim("https://www2.census.gov/geo/docs/reference/state.txt",sep="|",colClasses=rep("character",4))
 
 #Create State list
 
@@ -43,7 +33,8 @@ for (i in 1:length(seq(2002, 2015, 1))) { #download loop aux
     
         download.file(paste0("http://lehd.ces.census.gov/data/lodes/LODES7/",state_list[n],"/od/",dl_file),dl_file) #All Jobs
         gunzip(dl_file)
-        assign("temp",fread(paste0(state_list[n],"_od_aux_JT00_",seq(2002, 2015, 1)[i],".csv"))) #read text
+        #assign("temp",fread(paste0(state_list[n],"_od_aux_JT00_",seq(2002, 2015, 1)[i],".csv"))) #read text
+        assign("temp",fread(paste0(state_list[n],"_od_aux_JT00_",seq(2002, 2015, 1)[i],".csv"),colClasses=c( w_geocode="character",h_geocode="character",S000="integer"),drop=c("SA01","SA02","SA03","SE01","SE02","SE03","SI01","SI02","SI03","createdate"))) #read text
         
         #temp[,w_geocode:=paste0(temp[,w_geocode],"_",seq(2002, 2015, 1)[i])]#append year
         temp[,Yr:=seq(2002, 2015, 1)[i]]#append year
@@ -68,7 +59,9 @@ for (i in 1:length(seq(2002, 2015, 1))) { #download loop aux
         
         download.file(paste0("http://lehd.ces.census.gov/data/lodes/LODES7/",state_list[n],"/od/",dl_file),dl_file) #All Jobs
         gunzip(dl_file)
-        assign("temp",fread(paste0(state_list[n],"_od_main_JT00_",seq(2002, 2015, 1)[i],".csv"))) #read text
+        #assign("temp",fread(paste0(state_list[n],"_od_main_JT00_",seq(2002, 2015, 1)[i],".csv"))) #read text
+        assign("temp",fread(paste0(state_list[n],"_od_main_JT00_",seq(2002, 2015, 1)[i],".csv"),colClasses=c( w_geocode="character",h_geocode="character",S000="integer"),drop=c("SA01","SA02","SA03","SE01","SE02","SE03","SI01","SI02","SI03","createdate"))) #read text
+        
         
         #temp[,w_geocode:=paste0(temp[,w_geocode],"_",seq(2002, 2015, 1)[i])]#append year
         temp[,Yr:=seq(2002, 2015, 1)[i]]#append year
@@ -86,38 +79,100 @@ for (i in 1:length(seq(2002, 2015, 1))) { #download loop aux
     
 }#end download loop (main)
 
-  saveRDS(get(paste0("all_blk_",state_list[n])), file = paste0("./OD/all_blk_",state_list[n],".rds"))
+  saveRDS(get(paste0("all_blk_",state_list[n])), file = paste0("./OD/all_blk_",state_list[n],".Rdata"))
   rm(list=paste0("all_blk_",state_list[n]))
 
 } #end state loop
 
-
-
-
-
-
-
-
+write.csv(output_log,"missing_files_from_series.csv")
 
 
 
 
 
 ####################################################################################
-#Create CSA Tables
+# 
 ####################################################################################
 
 
+#setwd("/home/alex/Documents/M_DRIVE/Data/")
+
+
+#Read Block Lookup
+#block_lookup <- import("/home/alex/US_workplace_classification/Shapefiles/Blocks/All_Blocks_2018_CSA.dbf")
+
+# Core based statistical areas (CBSAs), metropolitan divisions, and combined statistical areas (CSAs) (https://www.census.gov/geographies/reference-files/time-series/demo/metro-micro/delineation-files.html)
+
+"https://www2.census.gov/programs-surveys/metro-micro/geographies/reference-files/2018/delineation-files/list1_Sep_2018.xls"
+
+# 
+all_blk_ca <- readRDS("./OD/all_blk_ca.Rdata")
 
 
 
 
 
 
+# CSA Lookup
+download.file("https://www2.census.gov/programs-surveys/metro-micro/geographies/reference-files/2018/delineation-files/list1_Sep_2018.xls","list1_Sep_2018.xls")
+CSA_lookup <- read_xls("list1_Sep_2018.xls",skip=2)
+CSA_lookup <- CSA_lookup[,c("CSA Code","CSA Title", "FIPS State Code","FIPS County Code")]
+CSA_lookup <- unite(CSA_lookup, CountyCD, c(`FIPS State Code`, `FIPS County Code`), remove=TRUE,sep="")
+CSA_lookup <- as.data.table(CSA_lookup)
+CSA_lookup <- CSA_lookup[!is.na(`CSA Code`),]
+
+setindex(CSA_lookup,CountyCD)
+
+
+#
+
+all_blk_ca[,w_CountyCD:=substring(w_geocode,1,5)]
+all_blk_ca[,h_CountyCD:=substring(h_geocode,1,5)]
+
+all_blk_ca[,w_TractCD:=substring(w_geocode,1,11)]
+all_blk_ca[,h_TractCD:=substring(h_geocode,1,11)]
 
 
 
+setindex(all_blk_ca,w_CountyCD,  w_TractCD,h_CountyCD, h_TractCD)
+setindex(CSA_lookup ,CountyCD)
 
+setnames(CSA_lookup, c('CSA Code', 'CSA Title'), c('W_CSA_Code', 'W_CSA_Title'))
+
+
+all_blk_ca <- merge(all_blk_ca,CSA_lookup,by.x="w_CountyCD",by.y="CountyCD",all.x=TRUE)
+
+
+setnames(CSA_lookup, c('W_CSA_Code', 'W_CSA_Title'), c('H_CSA_Code', 'H_CSA_Title'))
+
+
+all_blk_ca <- merge(all_blk_ca,CSA_lookup,by.x="h_CountyCD",by.y="CountyCD",all.x=TRUE)
+
+
+#Group by tract, year and subset for San Jose-San Francisco-Oakland CSA
+
+CSA_388_2002 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2002",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2003 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2003",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2004 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2004",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2005 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2005",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2006 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2006",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2007 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2007",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2008 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2008",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2009 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2009",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2010 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2010",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2011 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2011",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2012 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2012",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2013 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2013",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2014 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2014",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_388_2015 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2015",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+
+#Create Graph
+CSA_388_2002_graph <- graph_from_data_frame(CSA_388_2002[All_Flow > 100 & (w_TractCD != h_TractCD),],directed = FALSE)
+
+test <- cluster_infomap(CSA_388_2002_graph)
+
+
+write_graph(CSA_388_2002_graph,file="CSA_388_2002_graph.net",format="pajek")
 
 
 ####################################################################################
