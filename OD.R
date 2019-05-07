@@ -106,9 +106,8 @@ write.csv(output_log,"missing_files_from_series.csv")
 "https://www2.census.gov/programs-surveys/metro-micro/geographies/reference-files/2018/delineation-files/list1_Sep_2018.xls"
 
 # 
-all_blk_ca <- readRDS("./OD/all_blk_ca.Rdata")
 
-
+load("~/US_workplace_classification/Data.RData")
 
 
 
@@ -149,163 +148,100 @@ setnames(CSA_lookup, c('W_CSA_Code', 'W_CSA_Title'), c('H_CSA_Code', 'H_CSA_Titl
 all_blk_ca <- merge(all_blk_ca,CSA_lookup,by.x="h_CountyCD",by.y="CountyCD",all.x=TRUE)
 
 
-#Group by tract, year and subset for San Jose-San Francisco-Oakland CSA
+#Group by tract, year and subset for San Jose-San Francisco-Oakland CSA (internal flows)
 
-CSA_388_2002 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2002",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2003 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2003",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2004 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2004",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2005 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2005",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2006 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2006",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2007 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2007",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2008 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2008",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2009 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2009",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2010 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2010",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2011 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2011",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2012 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2012",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2013 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2013",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2014 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2014",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
-CSA_388_2015 <- all_blk_ca[W_CSA_Code == "488" & Yr == "2015",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2002 <- all_blk_ca[ Yr == "2002" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2003 <- all_blk_ca[ Yr == "2003" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2004 <- all_blk_ca[ Yr == "2004" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2005 <- all_blk_ca[ Yr == "2005" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2006 <- all_blk_ca[ Yr == "2006" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2007 <- all_blk_ca[ Yr == "2007" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2008 <- all_blk_ca[ Yr == "2008" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2009 <- all_blk_ca[ Yr == "2009" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2010 <- all_blk_ca[ Yr == "2010" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2011 <- all_blk_ca[ Yr == "2011" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2012 <- all_blk_ca[ Yr == "2012" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2013 <- all_blk_ca[ Yr == "2013" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2014 <- all_blk_ca[ Yr == "2014" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+CSA_2015 <- all_blk_ca[ Yr == "2015" & W_CSA_Code == "488" & H_CSA_Code == "488",.(All_Flow = sum(S000)),by=list(w_TractCD, h_TractCD)]
+
+
+save(CSA_2002, CSA_2003,CSA_2004,CSA_2005,CSA_2006,CSA_2007,CSA_2008,CSA_2009,CSA_2010,CSA_2011,CSA_2012,CSA_2013,CSA_2014,CSA_2015,file = "CSA_DATA.RData")
+
+
+
+
+#GET TRACT CENTROIDS (2018 DATA)
+All_Tracts_Centroids_2018_WGS84 <-  readOGR(dsn="./Tracts", layer="All_Tracts_Centroids_2018_WGS84")
+Tract_Centroids <- data.frame(GEOID=All_Tracts_Centroids_2018_WGS84@data$GEOID,coordinates(All_Tracts_Centroids_2018_WGS84))
+names(Tract_Centroids) <- c("GEOID","lon","lat")
 
 #Create Graph
-CSA_388_2002_graph <- graph_from_data_frame(CSA_388_2002[All_Flow > 100 & (w_TractCD != h_TractCD),],directed = FALSE)
 
-test <- cluster_infomap(CSA_388_2002_graph)
-
-
-write_graph(CSA_388_2002_graph,file="CSA_388_2002_graph.net",format="pajek")
+CSA_Yr <- c("CSA_2002", "CSA_2003","CSA_2004","CSA_2005","CSA_2006","CSA_2007","CSA_2008","CSA_2009","CSA_2010","CSA_2011","CSA_2012","CSA_2013","CSA_2014","CSA_2015")
+sink("diam_log.txt",split=FALSE,append = FALSE)
 
 
-####################################################################################
-#Create MSA Tables
-####################################################################################
+for (i in 1:length(CSA_Yr)){
 
-#List of MSA codes (top 15 pop - https://en.wikipedia.org/wiki/List_of_Metropolitan_Statistical_Areas)
-CBSAFP <- c('35620','31080','16980','19100','26420','47900','37980','33100','12060','14460','41860','38060','40140','19820','42660')
-CBSAFP_remove <- c('47900','14460','38060') #DC,Boston
-CBSAFP <- setdiff(CBSAFP,CBSAFP_remove)
+#GET TEMP TABLE
+tmp_table <- as.matrix(get(CSA_Yr[i])[All_Flow > 0 & (w_TractCD != h_TractCD),])
 
-MSA_list <- as.numeric(CBSAFP)#Create a list of MSA
+#CREATE NETWORK
+g <- graph.edgelist(tmp_table[,1:2], directed=FALSE)
 
-for (i in 1:length(MSA_list)){
-  
-  t <- unique(COUNTY_Points@data[COUNTY_Points@data$CBSAFP == MSA_list[i],"STATEFP"]) #List the state that the MSA are within
-  s <- tolower(FIPS_USPS[FIPS %in% t,STUSAB]) #Get the state list as USPS format codes
-  print(s)
+#ADD EDGE WEIGHTS
+E(g)$weight=as.numeric(tmp_table[,3])
 
-  assign(paste0("MSA_",MSA_list[i]),data.table()) #Creates an empty MSA data table
-    
-    u <- COUNTY_Points@data[COUNTY_Points@data$CBSAFP == MSA_list[i] ,c("STATEFP","COUNTYFP")] #List the counties within state
-    u <- unique(paste0(u$STATEFP,u$COUNTYFP))#Create list of counties
-    
-    for (k in 1:length(u)) {  
-      if (substring(u[k],1,1) == "0"){#loop to check for the missing 0 issue you get on the state codes
-        u[k] <- substr(u[k],2,nchar(u[k]))
-      }
-    }
-    
-    for (j in 1:length(s)){#loop to extract counties from appropriate state table
-      tmp <- get(paste0("all_blk_",s[j]))[substring(w_geocode,1,nchar(u)) %in% u,] #Get rows that match the county  
-      assign(paste0("MSA_",MSA_list[i]),rbind(get(paste0("MSA_",MSA_list[i])),tmp)) #Add data to MSA table
-    }
+
+#ADD LOCATION TO EACH VERTEX
+#tmp_coord <- Tract_Centroids[Tract_Centroids$GEOID %in% get.vertex.attribute(g, "name"),]#Gets the lat lon for the vertex
+#tmp_coord <- tmp_coord[match(get.vertex.attribute(g, "name"), tmp_coord$GEOID),] #Order correctly
+#g <- set.vertex.attribute(g, "latitude", value=tmp_coord$lat)
+#g <- set.vertex.attribute(g, "longitude", value=tmp_coord$lon)
+
+
+#FIND STRUCTURE
+#dg <- diameter(g)
+dg <- 10
+#log diam.
+cat(paste0(CSA_Yr[i],": D=",dg))
+
+cluster_res <-  walktrap.community(g, steps=dg) #Find community structure
+
+#ADD MEMBERSHIP TO EACH VERTEX
+g <- set.vertex.attribute(g, "membership", value=membership(cluster_res))
+
+
+assign(paste0(CSA_Yr[i],"_Graph_with_clusters"), g)#Add clusters to graph object
+
+
+# Map
+# Flows
+names(Tract_Centroids) <- c("GEOID","w_lon","w_lat")
+tmp_flow <- get(CSA_Yr[i])
+Flow_Out <- data.frame(tmp_flow[All_Flow > 0 & (w_TractCD != h_TractCD),])
+Flow_Out <- merge(Flow_Out,Tract_Centroids,by.x="w_TractCD",by.y="GEOID",all.x=TRUE)
+names(Tract_Centroids) <- c("GEOID","h_lon","h_lat")
+Flow_Out <- merge(Flow_Out,Tract_Centroids,by.x="h_TractCD",by.y="GEOID",all.x=TRUE)
+
+# membership
+names(Tract_Centroids) <- c("GEOID","lon","lat")
+Tract <- data.frame(GEOID=get.vertex.attribute(g,"name"),membership=get.vertex.attribute(g,"membership"))
+Tract <- merge(Tract,Tract_Centroids,by="GEOID",all.x=TRUE)
+
+
+#Write CSV
+write.csv(Tract,paste0(CSA_Yr[i],"_Tract_Membership.csv"))
+write.csv(Flow_Out,paste0(CSA_Yr[i],"_Flows.csv"))
+
+remove(list=c("g","dg","cluster_res","Tract","Flow_Out","tmp_table","tmp_flow"))
 
 }
 
-######################################################################
-#Create combined MSA input per year
-######################################################################
 
-for (i in 1:length(paste0("MSA_",CBSAFP))) { #loop through each MSA
-  
-  MSA <- paste0("MSA_",CBSAFP)[i]#get MSA code in the format of the data table
-  tmp <- get(MSA)
-  tmp[, c("block_workplace", "year") := tstrsplit(w_geocode, "_", fixed=TRUE)]#create a block and year column
-  tmp[,MSA:= paste0(CBSAFP[i])]#Add MSA code
-  
-  tmp$block_workplace[nchar(tmp$block_workplace) < 15] <- paste0("0",tmp$block_workplace) #Corrects the missing 0 issue where needed
-  assign(MSA,tmp)
-  rm(tmp)
-}
+#write_graph(CSA_2002_graph,file="CSA_2002_graph.net",format="pajek")
 
-#Create combined MSA object
-MSA_All <- do.call(rbind, list(MSA_35620, MSA_31080, MSA_16980, MSA_19100, MSA_26420, MSA_37980, MSA_33100, MSA_12060, MSA_41860, MSA_40140, MSA_19820, MSA_42660))
-
-#remove individual MSA objects
-rm(list=c("MSA_35620","MSA_31080","MSA_16980","MSA_19100","MSA_26420","MSA_37980","MSA_33100","MSA_12060","MSA_41860","MSA_40140","MSA_19820","MSA_42660"))
-
-######################################################################
-# Create year files and calc rates
-######################################################################
-
-out_tab <- MSA_All[,colnames(MSA_All)[2:52],with=FALSE]/MSA_All[,C000] * 100 #convert to percent
-out_tab[,block_workplace:= MSA_All[,block_workplace]] #Add block code
-out_tab[,year:= MSA_All[,year]] #Add year ID
-out_tab[,MSA:= MSA_All[,MSA]] #Add year ID
-
-
-yr_list <- unique(out_tab$year)
-
-for (i in 1:length(yr_list)){
-  
-  assign(paste0("MSA_WRK_",yr_list[i]),out_tab[year==yr_list[i]])
-}
-
-################################################################################
-# Code to check block matches and identify those blocks with no data for 2004-2014
-################################################################################
-
-
-poly.data <- readRDS("poly.data.rds")
-all_block_IDs <- data.table(poly.data@data$GEOID10) 
-rm(poly.data)# Remove - as large
-
-
-#Create a data table showing which blocks have data by year
-
-for (i in 1:length(2004:2014)){
-  
-  yr <- c(2004:2014)[i]#Get year
-  
-  tmp <- data.table(get(paste0("MSA_WRK_",yr))[,block_workplace])
-  tmp[,yr := 1]
-  setnames(tmp, old=c("V1","yr"), new=c("V1",paste0("Yr_",yr)))
-  
-  all_block_IDs <- merge(all_block_IDs,tmp,by = "V1", all.x=TRUE)
-  
-  tmp2 <- data.table(all_block_IDs[,V1])
-  tmp2[,In_All_Blocks := 1]
-  
-  tmp <- merge(data.table(tmp[,V1]),tmp2,by = "V1", all.x=TRUE)#Checks to ensure all blocks in a year are found in the all_block_IDs object
-  
-  assign(paste0("blocks_in_",yr),tmp)
-  rm(list=c("tmp","tmp2"))
-    
-}
-
-all_blocks_no_data <- all_block_IDs[rowSums(is.na(all_block_IDs))==11, V1]
-
-
-
-################################################################################
-# Remove blocks with no data for 2004 - 2014 / calc rates again
-################################################################################
-
-out_tab <- MSA_All[!block_workplace %in% all_blocks_no_data,]#remove blocks with no data
-out_tab <- out_tab[,colnames(out_tab)[2:52],with=FALSE]/out_tab[,C000] * 100 #convert to percent
-out_tab[,block_workplace:= MSA_All[!block_workplace %in% all_blocks_no_data,block_workplace]] #Add block code
-out_tab[,TC:= MSA_All[!block_workplace %in% all_blocks_no_data,C000]] #Add total count
-out_tab[!block_workplace %in% all_blocks_no_data,year:= MSA_All[!block_workplace %in% all_blocks_no_data,year]] #Add year ID
-
-yr_list <- unique(out_tab$year)
-yr_list <- yr_list[!yr_list %in% c("2002","2003")]#2004 - 2014 only - 2002 & 2003 don't have full coverage
-
-for (i in 1:length(yr_list)){ 
-  
-  assign(paste0("MSA_WRK_",yr_list[i]),out_tab[year==yr_list[i]])
-  #write.csv(assign(paste0("MSA_",yr_list[i]),out_tab[year==yr_list[i]]),paste0("MSA_",yr_list[i],".csv"),row.names = FALSE) Optional write csv
-  
-}
-
-save(MSA_WRK_2004,MSA_WRK_2005,MSA_WRK_2006,MSA_WRK_2007,MSA_WRK_2008,MSA_WRK_2009,MSA_WRK_2010,MSA_WRK_2011,MSA_WRK_2012,MSA_WRK_2013,MSA_WRK_2014,file="./Census_Files/MSA_WRK_CENSUS.Rdata")
 
 
 
