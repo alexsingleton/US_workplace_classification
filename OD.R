@@ -212,11 +212,8 @@ cluster_res <-  walktrap.community(g, steps=dg) #Find community structure
 #ADD MEMBERSHIP TO EACH VERTEX
 g <- set.vertex.attribute(g, "membership", value=membership(cluster_res))
 
-
 assign(paste0(CSA_Yr[i],"_Graph_with_clusters"), g)#Add clusters to graph object
 
-
-# Map
 # Flows
 names(Tract_Centroids) <- c("GEOID","w_lon","w_lat")
 tmp_flow <- get(CSA_Yr[i])
@@ -239,12 +236,58 @@ remove(list=c("g","dg","cluster_res","Tract","Flow_Out","tmp_table","tmp_flow"))
 
 }
 
+# Create unified lookup table
 
-#write_graph(CSA_2002_graph,file="CSA_2002_graph.net",format="pajek")
+All_Tract_2002_2015 <- data.frame(GEOID = All_Tracts_Centroids_2018_WGS84@data[substr(All_Tracts_Centroids_2018_WGS84@data$GEOID,1,2) == "06","GEOID"]) #Cal Tracts
+
+for ( i in 1:(length(seq(2002, 2015, 1)))){
+
+yr <- seq(2002, 2015, 1)[i]
+g <-  get(paste0("CSA_",yr,"_Graph_with_clusters"))
+g_t <- data.frame(GEOID=get.vertex.attribute(g,"name"),membership=get.vertex.attribute(g,"membership"))
+colnames(g_t) <- c("GEOID",paste0("YR_",yr))
+
+All_Tract_2002_2015 <- merge(All_Tract_2002_2015,g_t,by="GEOID",all.x=TRUE)
+
+}
+
+#Select base year
+
+b<- c(1,4)
+x <- 2
+
+#Function to Compare Clusters
+compare_clusters <- function (b,x){
+  
+  tmp <- All_Tract_2002_2015[c(b,x)]
+  tmp2 <- as.data.frame.matrix(table(tmp[,3],tmp[,2]))
+  colnames(tmp2) <- LETTERS[1:14]
+  tmp3 <- list()
+  for (n in 1:length(rownames(tmp2))){
+    tmp3[n] <- colnames(tmp2[which.max(tmp2[n,])])
+    }
+  print(tmp2)
+  tmp4 <- data.frame(OldID = 1:nrow(tmp2),NewID=unlist(tmp3))
+  
+  return(tmp4)
+  print(tmp4)
+}
 
 
+# Export Table
 
+Year_Cluster_Lookup <- All_Tract_2002_2015[,c(1,4)]
+Year_Cluster_Lookup$YR_2004 <- mapvalues(Year_Cluster_Lookup$YR_2004,1:14,LETTERS[1:14])
 
+for (i in c(2,3,5:ncol(All_Tract_2002_2015))){
+  tmp <-  compare_clusters(c(1,4),i)#make comparison and return list (use 2004 as comparison as has the most clusters)
+  
+  tmp2 <- data.frame(All_Tract_2002_2015[c(1,i)])
+  colnames(tmp2) <- c("GEOID","OldID")
+  tmp3 <- merge(tmp2,tmp,by = "OldID",all.x=TRUE)[-1]# append new ID and remove old
+  colnames(tmp3) <- c("GEOID",colnames(All_Tract_2002_2015)[i]) #give correct column name
+  Year_Cluster_Lookup <- merge(Year_Cluster_Lookup,tmp3,by="GEOID",all.x=TRUE) #append to lookup
+  rm(list=c("tmp","tmp2","tmp3"))
+}
 
-
-
+write.csv(Year_Cluster_Lookup,"Year_Cluster_Lookup.csv")
